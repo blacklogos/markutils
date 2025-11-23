@@ -18,6 +18,11 @@ let package = Package(
         .executableTarget(
             name: "Clip",
             path: "Sources"
+        ),
+        .testTarget(
+            name: "ClipTests",
+            dependencies: ["Clip"],
+            path: "Tests"
         )
     ]
 )

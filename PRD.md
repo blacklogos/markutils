@@ -51,7 +51,7 @@
 
 **Pending:**
 
-- ⏳ **Text-to-Diagram:** Mermaid.js generation
+- ⏳ **Text-to-Diagram:** Mermaid.js generation, ASCII generation with MonoDraw style
 - ⏳ **Image Tools:** Background removal, resize
 
 ### 3.4. Autotext / Snippets ⏳ PLANNED
@@ -100,13 +100,29 @@ Based on research and user feedback:
 - 🎯 **Markdown Cheatsheet** (quick reference)
 - 🎯 **Export Formats** (HTML, PDF)
 
-### Phase 3: AI Integration
+### Phase 3: Polish, Onboarding & Social Tools (NEXT)
+
+- 🎯 **Onboarding Flow:** New intro screen with "DevUtils" style demo (Copy/Paste examples).
+- 🎯 **App Lifecycle:**
+  - Open -> Shows app.
+  - Click Close -> Minimizes to tray (doesn't quit).
+  - Right-click Tray -> Quit option.
+- 🎯 **Theming:** Dark / Light / Auto selection.
+- 🎯 **Feedback:** Button to email `mtri.vo@gmail.com`.
+- 🎯 **Asset UI:** Hover over asset -> Show "Copy" and "Remove" (X) buttons.
+- 🎯 **Social Media Formatter:** (New from `code.html`)
+  - **Unicode Styling:** Bold, Italic, Script (with Vietnamese support).
+  - **Custom Lists:** Bullet points with emojis (✅, 🔸, etc.).
+  - **Emoji Toolbar:** Quick access to common social emojis.
+  - **Footer Manager:** Auto-append signature/hashtags.
+
+### Phase 4: AI Integration
 
 - ⏳ LLM integration for text summarization
 - ⏳ Tone adjustment and rewriting
 - ⏳ Image background removal
 
-### Phase 4: Advanced Features
+### Phase 5: Advanced Features
 
 - ⏳ Autotext/Snippets system
 - ⏳ Cloud sync (iCloud)

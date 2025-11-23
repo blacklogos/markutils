@@ -9,13 +9,26 @@ struct TransformerView: View {
     @State private var tableInput = ""
     @State private var tableOutput = ""
     
+    // Social Mode Data
+    @State private var socialInput = ""
+    
     @State private var selectedTransform: TransformType = .textConversion
-    @State private var showHTMLPreview = true
     @State private var isReverse = false // false: Forward (MD->HTML, Table->MD), true: Reverse (HTML->MD, MD->Table)
+    
+    // View Mode for Live Preview
+    @State private var viewMode: ViewMode = .edit
     
     enum TransformType: String, CaseIterable, Identifiable {
         case textConversion = "Text (MD ↔ HTML)"
         case tableConversion = "Table (Spreadsheet ↔ MD)"
+        
+        var id: String { rawValue }
+    }
+    
+    enum ViewMode: String, CaseIterable, Identifiable {
+        case edit = "Edit"
+        case preview = "Preview"
+        case split = "Split"
         
         var id: String { rawValue }
     }
@@ -38,174 +51,179 @@ struct TransformerView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                // Segmented Picker
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        Picker("Transform", selection: $selectedTransform) {
-                            ForEach(TransformType.allCases) { type in
-                                Text(type.rawValue).tag(type)
+                // Top Toolbar: Transform Type & View Mode
+                VStack(spacing: 8) {
+                    // Transform Type Picker
+                    Picker("Transform", selection: $selectedTransform) {
+                        ForEach(TransformType.allCases) { type in
+                            Text(type.rawValue).tag(type)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    
+                    // View Mode Picker (Only for Text Conversion)
+                    if selectedTransform == .textConversion {
+                        Picker("View Mode", selection: $viewMode) {
+                            ForEach(ViewMode.allCases) { mode in
+                                Image(systemName: iconFor(mode)).tag(mode)
+                                    .help(mode.rawValue)
                             }
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        .frame(minWidth: geometry.size.width)
+                        .frame(width: 120)
                     }
                 }
-                
-                // Direction Indicator
-                HStack {
-                    Spacer()
-                    Text(directionLabel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
                 .padding(.bottom, 8)
                 
-                // Input Area (Flexible Height)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Input")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        
-                        // Clear button
-                        Button(action: { currentInput.wrappedValue = "" }) {
-                            Label("Clear", systemImage: "xmark.circle")
-                                .font(.caption2)
-                        }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .disabled(currentInput.wrappedValue.isEmpty)
-                        
-                        // Clipboard button (Renamed from Paste)
-                        Button(action: pasteInput) {
-                            Label("Clipboard", systemImage: "clipboard")
-                                .font(.caption2)
-                        }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        
-                        // Sample button
-                        Button(action: insertSample) {
-                            Label("Sample", systemImage: "text.quote")
-                                .font(.caption2)
-                        }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        
-                        // Copy button
-                        Button(action: copyInput) {
-                            Label("Copy", systemImage: "doc.on.doc")
-                                .font(.caption2)
-                        }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .disabled(currentInput.wrappedValue.isEmpty)
-                    }
-                    
-                    TextEditor(text: currentInput)
-                        .font(.system(size: 11, design: .monospaced))
-                        .frame(maxHeight: .infinity) // Fill available space
-                        .border(Color.gray.opacity(0.3))
-                        .onChange(of: currentInput.wrappedValue) { _, _ in
-                            transform()
-                        }
-                        .onChange(of: selectedTransform) { _, _ in
-                            // Re-trigger transform when switching modes to ensure output is up to date if needed
-                            // But since data is separate, we might just want to ensure correct state
-                            transform()
-                        }
-                        .onChange(of: isReverse) { _, _ in
-                            transform()
-                        }
-                }
-                .frame(height: (geometry.size.height - 60) / 2) // Split height roughly in half
+                Divider()
                 
-                // Swap button (Center)
-                Button(action: swapInputOutput) {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.caption)
+                // Main Content Area
+                if selectedTransform == .textConversion {
+                    textConversionContent(geometry: geometry)
+                } else {
+                    tableConversionContent(geometry: geometry)
                 }
-                .buttonStyle(.borderless)
-                .help("Swap input and output")
-                .padding(.vertical, 8)
-                
-                // Output Area (Flexible Height)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Output")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        // HTML Preview Toggle (only for MD -> HTML)
-                        if selectedTransform == .textConversion && !isReverse {
-                            Picker("View", selection: $showHTMLPreview) {
-                                Text("Preview").tag(true)
-                                Text("Raw HTML").tag(false)
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                            .frame(width: 160) // Slightly wider for "Raw HTML"
-                            .controlSize(.small)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: copyOutput) {
-                            Label("Copy", systemImage: "doc.on.doc")
-                                .font(.caption2)
-                        }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .disabled(currentOutput.wrappedValue.isEmpty)
-                    }
-                    
-                    if showHTMLPreview && selectedTransform == .textConversion && !isReverse {
-                        HTMLPreviewView(htmlContent: currentOutput.wrappedValue)
-                            .frame(maxHeight: .infinity)
-                            .border(Color.gray.opacity(0.3))
-                    } else {
-                        TextEditor(text: currentOutput)
-                            .font(.system(size: 11, design: .monospaced))
-                            .frame(maxHeight: .infinity)
-                            .border(Color.gray.opacity(0.3))
-                    }
-                }
-                .frame(height: (geometry.size.height - 60) / 2) // Split height roughly in half
             }
-            .padding(12)
         }
     }
     
-    private var directionLabel: String {
-        switch selectedTransform {
-        case .textConversion:
-            return isReverse ? "HTML → Markdown" : "Markdown → HTML"
-        case .tableConversion:
-            return isReverse ? "Markdown Table → Spreadsheet" : "Spreadsheet → Markdown Table"
+    private func iconFor(_ mode: ViewMode) -> String {
+        switch mode {
+        case .edit: return "pencil"
+        case .preview: return "eye"
+        case .split: return "rectangle.split.3x1"
         }
     }
+    
+    @State private var editor: NSTextView? // For MacEditorView
+    
+    // MARK: - Text Conversion (Markdown ↔ HTML) with Live Preview
+    
+    private func textConversionContent(geometry: GeometryProxy) -> some View {
+        HStack(spacing: 0) {
+            // Editor Side
+            if viewMode == .edit || viewMode == .split {
+                VStack(spacing: 0) {
+                    editorToolbar(title: "Markdown Input", text: $textInput, isInput: true)
+                    MacEditorView(
+                        text: $textInput,
+                        editor: $editor,
+                        font: .monospacedSystemFont(ofSize: 12, weight: .regular),
+                        onTextChange: { _ in transform() }
+                    )
+                }
+                .frame(maxWidth: viewMode == .split ? geometry.size.width / 2 : .infinity)
+            }
+            
+            // Divider for Split View
+            if viewMode == .split {
+                Divider()
+            }
+            
+            // Preview Side
+            if viewMode == .preview || viewMode == .split {
+                VStack(spacing: 0) {
+                    editorToolbar(title: "Preview", text: $textOutput, isInput: false)
+                    
+                    // Use MarkdownPreviewView for rendered markdown
+                    MarkdownPreviewView(attributedString: RichTextTransformer.markdownToRichText(textInput))
+                        .background(Color(NSColor.textBackgroundColor))
+                }
+                .frame(maxWidth: viewMode == .split ? geometry.size.width / 2 : .infinity)
+            }
+        }
+    }
+    
+    // MARK: - Table Conversion (Legacy Split)
+    
+    private func tableConversionContent(geometry: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            // Input
+            VStack(spacing: 0) {
+                editorToolbar(title: "Input", text: $tableInput, isInput: true)
+                TextEditor(text: $tableInput)
+                    .font(.system(size: 11, design: .monospaced))
+                    .onChange(of: tableInput) { _, _ in transform() }
+            }
+            .frame(height: (geometry.size.height - 100) / 2)
+            
+            // Swap Button
+            HStack {
+                Spacer()
+                Button(action: swapInputOutput) {
+                    Image(systemName: "arrow.up.arrow.down")
+                }
+                .buttonStyle(.plain)
+                .padding(4)
+                Spacer()
+            }
+            .background(Color(NSColor.windowBackgroundColor))
+            
+            // Output
+            VStack(spacing: 0) {
+                editorToolbar(title: "Output", text: $tableOutput, isInput: false)
+                TextEditor(text: $tableOutput)
+                    .font(.system(size: 11, design: .monospaced))
+            }
+            .frame(height: (geometry.size.height - 100) / 2)
+        }
+    }
+    
+    // MARK: - Toolbars
+    
+    private func editorToolbar(title: String, text: Binding<String>, isInput: Bool) -> some View {
+        HStack {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Spacer()
+            
+            if isInput {
+                Button(action: { text.wrappedValue = "" }) {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .help("Clear")
+                
+                Button(action: insertSample) {
+                    Image(systemName: "text.quote")
+                }
+                .buttonStyle(.plain)
+                .help("Insert Sample")
+            }
+            
+            Button(action: {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(text.wrappedValue, forType: .string)
+            }) {
+                Image(systemName: "doc.on.doc")
+            }
+            .buttonStyle(.plain)
+            .help("Copy")
+        }
+        .padding(8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .overlay(Rectangle().frame(height: 1).foregroundColor(Color(NSColor.separatorColor)), alignment: .bottom)
+    }
+    
+    // MARK: - Logic
     
     private func transform() {
         switch selectedTransform {
         case .textConversion:
-            if isReverse {
-                // HTML -> Markdown
-                textOutput = RichTextTransformer.htmlToMarkdown(textInput)
-            } else {
-                // Markdown -> HTML
-                textOutput = RichTextTransformer.markdownToHTML(textInput)
-            }
+            // For text conversion, we rely on the Preview view to render, 
+            // but we still update output for copy purposes if needed (HTML export)
+             textOutput = RichTextTransformer.markdownToHTML(textInput)
             
         case .tableConversion:
             if isReverse {
-                // Markdown Table -> TSV (Spreadsheet)
                 tableOutput = TableTransformer.markdownToTSV(tableInput)
             } else {
-                // Spreadsheet (TSV/CSV) -> Markdown Table
-                // Auto-detect separator based on content
                 if tableInput.contains("\t") {
                     tableOutput = TableTransformer.tsvToMarkdown(tableInput)
                 } else {
@@ -226,68 +244,32 @@ struct TransformerView: View {
             tableInput = tableOutput
             tableOutput = temp
         }
-        
-        // Toggle direction
         isReverse.toggle()
-        
-        // Re-transform with new direction
         transform()
-    }
-    
-    private func pasteInput() {
-        if let string = NSPasteboard.general.string(forType: .string) ?? NSPasteboard.general.string(forType: .init("public.utf8-plain-text")) {
-            switch selectedTransform {
-            case .textConversion: textInput = string
-            case .tableConversion: tableInput = string
-            }
-        }
     }
     
     private func insertSample() {
         switch selectedTransform {
         case .textConversion:
             textInput = """
-            # Vibe Coding Journal: Clip App
+            # Welcome to Clip
             
-            _A chronicle of human-AI collaboration in building a Mac menu bar content creation assistant_
+            This is a **live preview** of your markdown.
             
-            ---
+            - Edit on the left
+            - See changes on the right
+            - Supports *italics*, `code`, and more.
             
-            ## 2025-11-22 - The Beginning
-            
-            ### Session 1: Vision & PRD (08:51 - 09:08)
-            
-            **Human:** "I want a Mac taskbar app for slides, diagrams, and pictures"
-            
-            **AI:** _Translates vibes into structure_
-            
-            - A menu bar app (not just any app)
-            - An asset vault (not just a clipboard)
-            - AI-powered transformations (markdown → tables, text → diagrams)
+            ## Try it out!
+            Type something here...
             """
             
         case .tableConversion:
             tableInput = """
-            06/16/2025\tPAYPAL *PADDLE.NET\t0.00\t0.00\t1,536,449\t0.00\t0.00
-            06/16/2025\tSAKURA MOBILE\t0.00\t0.00\t0\t0.00\t0.00
-            06/17/2025\tIKEASHIBUYA\t0.00\t0.00\t0\t0.00\t0.00
-            06/18/2025\tTODOIST\t0.00\t5.00\t0\t0.00\t0.00
-            06/18/2025\tKlook Travel Tech Ltd\t0.00\t109.70\t0\t0.00\t0.00
-            06/19/2025\tKOMEHYO SHINJUKU WOMEN\t0.00\t0.00\t0\t0.00\t0.00
-            TOTAL\t\t0.00\t594.42\t6,317,057\t0.00\t0.00
+            Item\tPrice\tQty
+            Apple\t$1.00\t5
+            Banana\t$0.50\t10
             """
         }
-    }
-    
-    private func copyInput() {
-        NSPasteboard.general.clearContents()
-        let textToCopy = selectedTransform == .textConversion ? textInput : tableInput
-        NSPasteboard.general.setString(textToCopy, forType: .string)
-    }
-    
-    private func copyOutput() {
-        NSPasteboard.general.clearContents()
-        let textToCopy = selectedTransform == .textConversion ? textOutput : tableOutput
-        NSPasteboard.general.setString(textToCopy, forType: .string)
     }
 }

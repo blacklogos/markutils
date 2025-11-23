@@ -446,7 +446,7 @@ We took a hard look at the app's usability and made some crucial refinements:
 3.  **UI Clarity:** Renamed "Paste" to "Clipboard" (because words matter) and updated the sample data to be more relevant (Journal for text, Financials for tables).
 4.  **Smart Detection Removal:** Sometimes "smart" is just annoying. We removed the auto-switching to give the human full control.
 
-**The Vibe:** Polishing the diamond. The core features were there, but they needed to be robust. We moved from "it works" to "it works *well*."
+**The Vibe:** Polishing the diamond. The core features were there, but they needed to be robust. We moved from "it works" to "it works _well_."
 
 ---
 
@@ -455,3 +455,56 @@ We took a hard look at the app's usability and made some crucial refinements:
 - [ ] Push to GitHub 🚀
 - [ ] Add Autotext snippets
 - [ ] Explore AI integration
+
+---
+
+## 2025-11-23 - Visual Identity & Polish
+
+### Session 12: The "Premium" Feel (23:00 - 09:45)
+
+**Human:** Pushed for a custom header (no system title bar), a "Pin" feature that defaults to always-on-top, and then dove deep into app icon exploration.
+
+**AI:** Implemented a custom window style, hiding the native macOS title bar for a sleek look. Wired up the traffic lights and tab navigation. Then, put on the designer hat to generate multiple app icon concepts (Glassmorphism, Neon, Geometric).
+
+**The Polish:**
+We moved from "functional MVP" to "app you want to keep open".
+
+- **Custom Header:** The "yellow rectangle" is gone. The app now looks native and custom.
+- **Pinning:** Defaulting to "Always on Top" makes it a true utility companion.
+- **Iconography:** Explored the visual soul of Clip. Glassmorphism seems to be the winner for that "clean, airy" vibe.
+
+**The Vibe:** 🎨 _Aesthetic Iteration._ We stopped coding logic and started coding _feel_.
+
+**What's Next?**
+
+- [ ] Decide on the final icon
+- [ ] Phase 2: Enhanced UX (Live Preview!)
+- [ ] Phase 4: AI Integration
+
+---
+
+## 2025-11-23 - The Release Candidate
+
+### Session 13: From Glitch to Gold (14:00 - 14:50)
+
+**Human:** "Fix the assets, pivot the AI, lock the window size, and make it stable."
+
+**AI:** _Refactors, Tests, and Polishes_
+
+This session was a marathon of refinement. We moved from "experimental features" to "shipping quality".
+
+**The Pivot:**
+
+1.  **Assets Overhaul:** The drag-and-drop was buggy (duplicating items). We rewrote the logic, added a file importer, separated Images/Text, and added drag limits. It's now a robust vault.
+2.  **AI Reimagined:** Instead of a generic "Summarize" button, we pivoted to a **Slide Generator**. Input text -> Output structured slide deck (Consulting, Sales, Marketing).
+3.  **Stability First:**
+    - **Fixed Window:** Locked to **600x475px**. No more awkward resizing.
+    - **Traffic Lights:** Restored the native system controls using `WindowAccessor`. No more fake buttons.
+    - **TDD:** Added `ClipTests` and verified our logic.
+
+**The Vibe:** 🛡️ _Hardening._ We stopped adding "cool stuff" and started making sure the "cool stuff" actually works, every time.
+
+**What's Next?**
+
+- [x] Push to GitHub 🚀
+- [x] Release!

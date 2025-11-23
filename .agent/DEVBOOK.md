@@ -67,6 +67,22 @@ if let container = modelContainer {
 
 ---
 
+### Traffic Lights & Window Styles
+
+**Mistake:** Used `.windowStyle(.hiddenTitleBar)` which hid traffic lights or made them hard to position. Duplicated them with custom buttons.
+
+**Made:** 1 time (Session 12)
+
+**Lesson:** Custom buttons never feel "native" enough. For a transparent header with native controls:
+
+1. Remove `.windowStyle` modifiers.
+2. Use a `WindowAccessor` to access the underlying `NSWindow`.
+3. Manually set `titlebarAppearsTransparent = true` and `styleMask.insert(.fullSizeContentView)`.
+
+**Rule:** `Native Controls > Custom Replicas`
+
+---
+
 ### Drag-and-Drop Conflicts
 
 **Mistake:** `.draggable()` on images conflicted with window drag
@@ -109,6 +125,24 @@ class AppDelegate: NSApplicationDelegate {
 ```
 
 **Why:** Full control over lifecycle and window behavior
+
+---
+
+### WindowAccessor Pattern
+
+```swift
+struct WindowAccessor: NSViewRepresentable {
+    var callback: (NSWindow?) -> Void
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { self.callback(view.window) }
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+```
+
+**Why:** SwiftUI doesn't expose `NSWindow` modifiers for everything (yet). This bridge allows low-level AppKit configuration (transparency, traffic lights, levels) within a SwiftUI view hierarchy.
 
 ---
 
