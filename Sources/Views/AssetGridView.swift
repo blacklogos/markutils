@@ -52,6 +52,10 @@ struct AssetGridView: View {
                             Section(header: sectionHeader("Folders")) {
                                 ForEach(folderAssets) { folder in
                                     FolderRowView(folder: folder)
+                                        .onDrag {
+                                            draggingAsset = folder
+                                            return createItemProvider(for: folder)
+                                        }
                                     Divider().padding(.leading)
                                 }
                             }
@@ -95,6 +99,10 @@ struct AssetGridView: View {
                             Section(header: sectionHeader("Folders")) {
                                 ForEach(folderAssets) { folder in
                                     FolderRowView(folder: folder)
+                                        .onDrag {
+                                            draggingAsset = folder
+                                            return createItemProvider(for: folder)
+                                        }
                                     Divider().padding(.leading)
                                 }
                             }
@@ -183,9 +191,49 @@ struct AssetGridView: View {
                 completion(text.data(using: .utf8), nil)
                 return nil
             }
+        } else if asset.type == .folder {
+            // Create a temporary directory for the folder
+            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let folderURL = tempDir.appendingPathComponent(asset.name ?? "Folder")
+            
+            do {
+                try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+                exportAsset(asset, to: tempDir)
+                
+                provider.registerFileRepresentation(forTypeIdentifier: UTType.folder.identifier, fileOptions: [], visibility: .all) { completion in
+                    completion(folderURL, true, nil)
+                    return nil
+                }
+            } catch {
+                print("Failed to create temporary folder: \(error)")
+            }
         }
         
         return provider
+    }
+
+    private func exportAsset(_ asset: Asset, to directory: URL) {
+        let fileURL = directory.appendingPathComponent(asset.name ?? "Untitled")
+        
+        if asset.type == .folder {
+             do {
+                 try FileManager.default.createDirectory(at: fileURL, withIntermediateDirectories: true)
+                 if let children = asset.children {
+                     for child in children {
+                         exportAsset(child, to: fileURL)
+                     }
+                 }
+             } catch {
+                 print("Failed to create directory \(fileURL.path): \(error)")
+             }
+        } else if asset.type == .image, let data = asset.imageData {
+            // Ensure extension
+            let imageURL = fileURL.pathExtension.isEmpty ? fileURL.appendingPathExtension("png") : fileURL
+            try? data.write(to: imageURL)
+        } else if asset.type == .text, let text = asset.textContent {
+             let textURL = fileURL.pathExtension.isEmpty ? fileURL.appendingPathExtension("txt") : fileURL
+            try? text.write(to: textURL, atomically: true, encoding: .utf8)
+        }
     }
     
     private func handleDrop(items: [Data]) -> Bool {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FolderRowView: View {
     let folder: Asset
@@ -13,7 +14,19 @@ struct FolderRowView: View {
                     ForEach(children) { asset in
                         AssetItemView(asset: asset)
                             .onDrag {
-                                NSItemProvider(object: (asset.textContent ?? "Asset") as NSString)
+                                let provider = NSItemProvider()
+                                if asset.type == .image, let data = asset.imageData {
+                                    provider.registerDataRepresentation(forTypeIdentifier: UTType.png.identifier, visibility: .all) { completion in
+                                        completion(data, nil)
+                                        return nil
+                                    }
+                                } else if asset.type == .text, let text = asset.textContent {
+                                    provider.registerDataRepresentation(forTypeIdentifier: UTType.plainText.identifier, visibility: .all) { completion in
+                                        completion(text.data(using: .utf8), nil)
+                                        return nil
+                                    }
+                                }
+                                return provider
                             }
                     }
                 }
