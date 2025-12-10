@@ -22,7 +22,7 @@ let package = Package(
         .testTarget(
             name: "ClipTests",
             dependencies: ["Clip"],
-            path: "Tests"
+            path: "Tests/ClipTests"
         )
     ]
 )

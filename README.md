@@ -41,3 +41,8 @@ Clip automatically detects the content you paste and offers meaningful transform
 - **Import Assets**: Drag files directly from Finder onto the app window.
 - **Organize**: Use the "Folder" icon to create new headers and drag items into them.
 - **Transform Text**: Paste text into the input area, select your desired transformation, and click the standard copy button or the "Swap" button to reverse the process.
+
+## Contributing
+
+**🤖 AI Agents & Developers:**
+Please read [AGENT_RULES.md](AGENT_RULES.md) before making any changes. This project enforces strict regression testing to prevent feature breakage.

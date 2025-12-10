@@ -134,11 +134,11 @@ struct AssetGridView: View {
                     .padding()
                 }
             }
-            .dropDestination(for: Data.self) { items, location in
-                handleDrop(items: items)
-            }
             .dropDestination(for: URL.self) { items, location in
                 handleURLDrop(items: items)
+            }
+            .dropDestination(for: Data.self) { items, location in
+                handleDrop(items: items)
             }
             // Add onPasteCommand for macOS
             .onPasteCommand(of: [.image, .fileURL, .url, .text]) { providers in
