@@ -1,21 +1,17 @@
 import SwiftUI
-import SwiftData
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var statusItem: NSStatusItem!
     var floatingPanel: FloatingPanel!
-    var modelContainer: ModelContainer?
+    var window: NSWindow!
+    var mouseShakeDetector: MouseShakeDetector!
+
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        checkSingleInstance()
+        
         // Hide Dock Icon
         NSApp.setActivationPolicy(.accessory)
-        
-        // Setup SwiftData
-        do {
-            modelContainer = try ModelContainer(for: Asset.self)
-        } catch {
-            print("Failed to create ModelContainer: \(error)")
-        }
         
         // Setup Status Item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -48,18 +44,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         // Setup Floating Panel
         createFloatingPanel()
+        
+        // Setup Mouse Shake Detector
+        mouseShakeDetector = MouseShakeDetector()
+        mouseShakeDetector.onShake = { [weak self] in
+            self?.showPanel()
+        }
+        mouseShakeDetector.startMonitoring()
     }
     
     private func createFloatingPanel() {
         let contentView = ContentView()
         
         // Inject container if it exists
-        let viewWithModel: AnyView
-        if let container = modelContainer {
-             viewWithModel = AnyView(contentView.modelContainer(container))
-        } else {
-             viewWithModel = AnyView(contentView)
-        }
+        // Inject container if it exists
+        let viewWithModel = AnyView(contentView.environment(AssetStore.shared))
         
         let hostingController = NSHostingController(rootView: viewWithModel)
         
@@ -125,5 +124,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Hide instead of closing
         sender.orderOut(nil)
         return false // Return false to prevent actual closing
+    }
+    
+    func showPanel() {
+        if !floatingPanel.isVisible {
+            floatingPanel.makeKeyAndOrderFront(nil)
+        }
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+    
+    private func checkSingleInstance() {
+        let bundleID = Bundle.main.bundleIdentifier ?? ""
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        
+        if runningApps.count > 1 {
+            // Found another instance
+            // Activate the other instance(s)
+            for app in runningApps where app != NSRunningApplication.current {
+                app.activate(options: [.activateIgnoringOtherApps])
+            }
+            
+            // Terminate this instance
+            NSApp.terminate(nil)
+        }
     }
 }

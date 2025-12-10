@@ -2,3 +2,6 @@
 .build/
 .swiftpm/
 *.xcodeproj
+samples/
+Clip.app/
+*.dmg
