@@ -65,7 +65,8 @@ struct ContentView: View {
                 Text("Assets").tag(0)
                 Text("Transform").tag(1)
                 Text("Text Formatter").tag(2)
-                Text("AI").tag(3)
+                Text("Slides").tag(3)
+                Text("BBCode").tag(4)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -87,7 +88,9 @@ struct ContentView: View {
                 case 2:
                     SocialMediaFormatterView(text: $socialInput)
                 case 3:
-                    AIView()
+                    SlideDeckView()
+                case 4:
+                    BBCodeView()
                 default:
                     Text("Unknown Tab")
                 }
