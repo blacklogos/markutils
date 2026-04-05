@@ -55,7 +55,31 @@ Store reusable text snippets with titles. Click to copy.
 
 ---
 
-## Running
+## Installation
+
+### Option A — Download DMG (recommended)
+
+1. Download **[Clip-1.1.0.dmg](https://github.com/blacklogos/markutils/releases/download/v1.1.0/Clip-1.1.0.dmg)**
+2. Open the DMG and drag **Clip.app** to `/Applications`
+3. Launch Clip from Spotlight or Finder
+
+**Gatekeeper bypass (required — app is not notarized)**
+
+macOS will block the app on first launch because it isn't signed with an Apple Developer certificate. Run this once after installation:
+
+```bash
+xattr -rd com.apple.quarantine /Applications/Clip.app
+```
+
+> **Tip:** If the command is denied, go to **System Settings → Privacy & Security → Full Disk Access** and enable your Terminal app, then run the command again.
+
+After removing the quarantine flag, open **System Settings → Privacy & Security** and grant any permissions Clip requests (the app only needs standard window management — no screen recording or accessibility required).
+
+Then double-click **Clip.app** to launch. The paperclip icon will appear in your menu bar.
+
+---
+
+### Option B — Build from source
 
 ```bash
 git clone https://github.com/blacklogos/markutils.git
@@ -64,6 +88,12 @@ swift run
 ```
 
 Requires Xcode Command Line Tools (`xcode-select --install`) or full Xcode.
+
+To build your own DMG:
+
+```bash
+bash scripts/build_dmg.sh
+```
 
 ---
 

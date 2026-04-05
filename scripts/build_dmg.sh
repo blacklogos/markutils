@@ -3,7 +3,8 @@
 # Configuration
 APP_NAME="Clip"
 BUILD_DIR=".build/release"
-DMG_NAME="${APP_NAME}.dmg"
+VERSION="1.1.0"
+DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 APP_BUNDLE="${APP_NAME}.app"
 
 # Ensure we are in the project root
@@ -45,9 +46,9 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.1.0</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>

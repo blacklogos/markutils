@@ -6,6 +6,10 @@ All notable changes to Clip are documented here.
 
 ## v1.1.0 — 2026-04-05
 
+**[Download Clip-1.1.0.dmg](https://github.com/blacklogos/markutils/releases/download/v1.1.0/Clip-1.1.0.dmg)**
+
+> Not notarized. Remove quarantine after install: `xattr -rd com.apple.quarantine /Applications/Clip.app`
+
 ### New features
 
 **Unicode Text Formatter (Convert mode)**
