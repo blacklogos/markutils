@@ -1,6 +1,7 @@
 
 import SwiftUI
 import AppKit
+import ClipCore
 
 struct SocialMediaFormatterView: View {
     @Binding var text: String

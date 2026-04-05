@@ -2,7 +2,7 @@
 
 A lightweight macOS menu bar utility for content creators. Lives in the menu bar — no Dock icon, always one click away.
 
-**Version 1.1.0** · macOS 14+ · Swift 5.9 · No dependencies
+**Version 1.2.0** · macOS 14+ · Swift 5.9 · No dependencies
 
 ---
 
@@ -59,9 +59,10 @@ Store reusable text snippets with titles. Click to copy.
 
 ### Option A — Download DMG (recommended)
 
-1. Download **[Clip-1.1.0.dmg](https://github.com/blacklogos/markutils/releases/download/v1.1.0/Clip-1.1.0.dmg)**
-2. Open the DMG and drag **Clip.app** to `/Applications`
-3. Launch Clip from Spotlight or Finder
+1. Download **Clip-1.2.0.dmg**
+2. Open the DMG — drag **Clip.app** to `/Applications`
+3. Double-click **"Install CLI.command"** in the same DMG to install the `clip` terminal tool
+4. Enter your password when prompted (needed to write to `/usr/local/bin`)
 
 **Gatekeeper bypass (required — app is not notarized)**
 
@@ -72,8 +73,6 @@ xattr -rd com.apple.quarantine /Applications/Clip.app
 ```
 
 > **Tip:** If the command is denied, go to **System Settings → Privacy & Security → Full Disk Access** and enable your Terminal app, then run the command again.
-
-After removing the quarantine flag, open **System Settings → Privacy & Security** and grant any permissions Clip requests (the app only needs standard window management — no screen recording or accessibility required).
 
 Then double-click **Clip.app** to launch. The paperclip icon will appear in your menu bar.
 
@@ -87,13 +86,37 @@ cd markutils
 swift run
 ```
 
+Install the CLI:
+
+```bash
+bash scripts/install_cli.sh
+```
+
 Requires Xcode Command Line Tools (`xcode-select --install`) or full Xcode.
 
-To build your own DMG:
+To build your own DMG (includes CLI binary):
 
 ```bash
 bash scripts/build_dmg.sh
 ```
+
+---
+
+## `clip` CLI
+
+The same transformers available in the app, usable from the terminal.
+
+```bash
+echo "# Hello **world**" | clip md2html
+echo "<h1>Hello</h1>" | clip html2md
+echo "**bold** and _italic_" | clip md2social
+
+# Transform clipboard in-place (no pipes needed):
+clip md2social --clipboard
+clip md2html -c
+```
+
+See [docs/clip-cli.md](docs/clip-cli.md) for the full guide.
 
 ---
 
@@ -112,29 +135,43 @@ bash scripts/build_dmg.sh
 
 ```
 Sources/
-├── AppDelegate.swift          # NSStatusItem, FloatingPanel lifecycle, mouse shake
-├── ClipApp.swift              # @main, SwiftUI app entry
-├── FloatingPanel.swift        # Custom NSPanel (non-activating, floating level)
+├── AppDelegate.swift              # NSStatusItem, FloatingPanel lifecycle, mouse shake
+├── ClipApp.swift                  # @main, SwiftUI app entry
+├── FloatingPanel.swift            # Custom NSPanel (non-activating, floating level)
 ├── Theme/
-│   └── AppColors.swift        # Warm palette — dynamic light/dark via NSColor provider
+│   └── AppColors.swift            # Warm palette — dynamic light/dark via NSColor provider
 ├── Models/
-│   ├── AssetStore.swift       # @Observable singleton, JSON persistence
-│   └── Snippet.swift          # Codable snippet model
+│   ├── AssetStore.swift           # @Observable singleton, JSON persistence
+│   └── Snippet.swift              # Codable snippet model
 ├── Services/
-│   └── ClipboardMonitor.swift # NSPasteboard change monitoring
+│   ├── ClipboardMonitor.swift     # NSPasteboard change monitoring
+│   └── MouseShakeDetector.swift   # Cursor velocity-based shake detection
 ├── Utilities/
-│   ├── RichTextTransformer.swift  # Markdown ↔ HTML ↔ NSAttributedString
+│   └── RichTextTransformer.swift  # AppKit extension: markdownToRichText, richTextToMarkdown
+├── Views/
+│   ├── ContentView.swift          # Root view, tab bar, theme
+│   ├── AssetGridView.swift        # Vault grid + search + drag/drop
+│   ├── QuickActionsView.swift     # Auto-detect transform tab
+│   ├── SocialMediaFormatterView.swift  # Text Formatter (Format + Convert modes)
+│   ├── SnippetsView.swift         # Snippets tab
+│   ├── HTMLPreviewView.swift      # WKWebView markdown preview (warm CSS)
+│   ├── StatusBarView.swift        # Word/char/cursor status bar
+│   └── TransformerView.swift      # Markdown ↔ HTML ↔ table transform tab
+├── ClipCore/                      # Pure Foundation library — shared with CLI
+│   ├── RichTextTransformer.swift  # markdownToHTML, htmlToMarkdown (no AppKit)
 │   ├── TableTransformer.swift     # TSV/CSV ↔ Markdown table
-│   └── UnicodeTextFormatter.swift # Unicode style maps, MD→Unicode, table→ASCII box
-└── Views/
-    ├── ContentView.swift          # Root view, tab bar, theme
-    ├── AssetGridView.swift        # Vault grid + search + drag/drop
-    ├── QuickActionsView.swift     # Auto-detect transform tab
-    ├── SocialMediaFormatterView.swift  # Text Formatter (Format + Convert modes)
-    ├── SnippetsView.swift         # Snippets tab
-    ├── HTMLPreviewView.swift      # WKWebView markdown preview (warm CSS)
-    ├── StatusBarView.swift        # Word/char/cursor status bar
-    └── ...                        # Supporting views
+│   └── UnicodeTextFormatter.swift # Unicode style maps, MD→Unicode, table→ASCII
+└── ClipCLI/
+    └── main.swift                 # `clip` CLI: md2html, html2md, md2social subcommands
+```
+
+**Target graph:**
+
+```
+ClipCore  (Foundation only)
+├── Clip  (app executable — depends on ClipCore, adds AppKit layer)
+├── clip  (CLI executable — depends on ClipCore, adds NSPasteboard)
+└── ClipTests  (test target)
 ```
 
 **Persistence:** Plain `Codable` + JSON, no SwiftData or Core Data.  
@@ -145,10 +182,13 @@ Sources/
 ## Build & Test
 
 ```bash
-swift build          # compile
-swift run            # run
-swift test           # unit tests (requires full Xcode)
-./scripts/verify_release.sh  # pre-release check
+swift build                          # compile all targets
+swift build --product clip           # CLI only
+swift run                            # run the app
+swift test                           # unit tests (requires full Xcode)
+bash scripts/install_cli.sh          # install CLI to /usr/local/bin
+bash scripts/build_dmg.sh            # build distributable DMG (app + CLI)
+./scripts/verify_release.sh          # pre-release check
 ```
 
 ---

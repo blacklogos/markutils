@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
+import ClipCore
 
 // Unified Transform tab: paste text → auto-detect type → show action buttons → output with copy + drag.
 struct QuickActionsView: View {

@@ -1,15 +1,15 @@
 import Foundation
 
-struct TableTransformer {
+public struct TableTransformer {
     
     // MARK: - Markdown to TSV/CSV
     
-    static func markdownToTSV(_ markdown: String) -> String {
+    public static func markdownToTSV(_ markdown: String) -> String {
         let rows = parseMarkdownTable(markdown)
         return rows.map { $0.joined(separator: "\t") }.joined(separator: "\n")
     }
     
-    static func markdownToCSV(_ markdown: String) -> String {
+    public static func markdownToCSV(_ markdown: String) -> String {
         let rows = parseMarkdownTable(markdown)
         return rows.map { row in
             row.map { escapeCSVField($0) }.joined(separator: ",")
@@ -18,14 +18,14 @@ struct TableTransformer {
     
     // MARK: - TSV/CSV to Markdown
     
-    static func tsvToMarkdown(_ tsv: String) -> String {
+    public static func tsvToMarkdown(_ tsv: String) -> String {
         let rows = tsv.components(separatedBy: .newlines)
             .filter { !$0.isEmpty }
             .map { $0.components(separatedBy: "\t") }
         return generateMarkdownTable(rows)
     }
     
-    static func csvToMarkdown(_ csv: String) -> String {
+    public static func csvToMarkdown(_ csv: String) -> String {
         let rows = parseCSV(csv)
         return generateMarkdownTable(rows)
     }

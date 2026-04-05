@@ -2,9 +2,9 @@ import Foundation
 
 // Converts text to Unicode-styled plain text for social media platforms (LinkedIn, Twitter, etc.)
 // where markdown is not rendered but Unicode mathematical characters display styled text.
-struct UnicodeTextFormatter {
+public struct UnicodeTextFormatter {
 
-    enum Style {
+    public enum Style {
         case bold, italic, boldItalic, monospace, script, smallCaps, underline, strikethrough
     }
 
@@ -142,7 +142,7 @@ struct UnicodeTextFormatter {
     // MARK: - Apply Style
 
     /// Applies a Unicode style to all alphanumeric characters in `text`. Non-mapped chars pass through unchanged.
-    static func apply(_ style: Style, to text: String) -> String {
+    public static func apply(_ style: Style, to text: String) -> String {
         switch style {
         case .bold:        return text.map { boldMap[$0].map(String.init) ?? String($0) }.joined()
         case .italic:      return text.map { italicMap[$0].map(String.init) ?? String($0) }.joined()
@@ -162,7 +162,7 @@ struct UnicodeTextFormatter {
     // MARK: - Revert to Plain
 
     /// Strips all Unicode styling (bold/italic/mono/script/smallCaps/underline/strikethrough) back to ASCII.
-    static func revertToPlain(_ text: String) -> String {
+    public static func revertToPlain(_ text: String) -> String {
         // Remove combining overlay characters first
         let stripped = text
             .replacingOccurrences(of: "\u{0332}", with: "")
@@ -176,7 +176,7 @@ struct UnicodeTextFormatter {
     /// Converts Markdown-formatted text to Unicode-styled plain text suitable for social media.
     /// Handles: headers, bold/italic/monospace/strikethrough inline, bullet lists, blockquotes,
     /// horizontal rules, links, and embedded tables.
-    static func markdownToUnicode(_ markdown: String) -> String {
+    public static func markdownToUnicode(_ markdown: String) -> String {
         var output = ""
         let lines = markdown.components(separatedBy: .newlines)
         var i = 0
@@ -253,7 +253,7 @@ struct UnicodeTextFormatter {
 
     /// Converts a Markdown table to an ASCII box-drawing table.
     /// Input may be just the table lines or full text containing table lines.
-    static func markdownTableToASCII(_ markdown: String) -> String {
+    public static func markdownTableToASCII(_ markdown: String) -> String {
         let allLines = markdown.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
 

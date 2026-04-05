@@ -1,6 +1,4 @@
 // swift-tools-version: 5.9
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
 import PackageDescription
 
 let package = Package(
@@ -9,15 +7,25 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(
-            name: "Clip",
-            targets: ["Clip"]
-        )
+        .executable(name: "Clip", targets: ["Clip"]),
+        .executable(name: "clip", targets: ["ClipCLI"]),
+        .library(name: "ClipCore", targets: ["ClipCore"]),
     ],
     targets: [
+        .target(
+            name: "ClipCore",
+            path: "Sources/ClipCore"
+        ),
         .executableTarget(
             name: "Clip",
-            path: "Sources"
+            dependencies: ["ClipCore"],
+            path: "Sources",
+            exclude: ["ClipCore", "ClipCLI"]
+        ),
+        .executableTarget(
+            name: "ClipCLI",
+            dependencies: ["ClipCore"],
+            path: "Sources/ClipCLI"
         ),
         .testTarget(
             name: "ClipTests",

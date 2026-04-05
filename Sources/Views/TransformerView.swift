@@ -1,4 +1,5 @@
 import SwiftUI
+import ClipCore
 
 struct TransformerView: View {
     // Text Mode Data
