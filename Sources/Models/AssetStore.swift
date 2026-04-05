@@ -33,8 +33,9 @@ class AssetStore {
     func delete(_ asset: Asset) {
         assets.removeAll { $0.id == asset.id }
     }
-    
-    private func save() {
+
+    /// Call after mutating an asset's properties (name, etc.) to persist the change.
+    func save() {
         do {
             let data = try JSONEncoder().encode(assets)
             try data.write(to: fileURL)

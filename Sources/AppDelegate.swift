@@ -6,6 +6,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var window: NSWindow!
     var mouseShakeDetector: MouseShakeDetector!
 
+    private var globalHotkeyMonitor: Any?
+    private var clipboardHistoryMenuItem: NSMenuItem?
+
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         checkSingleInstance()
@@ -26,17 +29,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Open Clip", action: #selector(togglePanel), keyEquivalent: "o"))
         menu.addItem(NSMenuItem.separator())
-        
+
         // Theme Submenu
         let themeMenu = NSMenu()
         themeMenu.addItem(NSMenuItem(title: "System", action: #selector(setThemeSystem), keyEquivalent: ""))
         themeMenu.addItem(NSMenuItem(title: "Light", action: #selector(setThemeLight), keyEquivalent: ""))
         themeMenu.addItem(NSMenuItem(title: "Dark", action: #selector(setThemeDark), keyEquivalent: ""))
-        
+
         let themeItem = NSMenuItem(title: "Theme", action: nil, keyEquivalent: "")
         themeItem.submenu = themeMenu
         menu.addItem(themeItem)
-        
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Clipboard History toggle
+        let cbEnabled = ClipboardMonitor.shared.isEnabled
+        let cbItem = NSMenuItem(
+            title: cbEnabled ? "Clipboard History: On" : "Clipboard History: Off",
+            action: #selector(toggleClipboardHistory),
+            keyEquivalent: ""
+        )
+        cbItem.state = cbEnabled ? .on : .off
+        menu.addItem(cbItem)
+        clipboardHistoryMenuItem = cbItem
+
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Send Feedback", action: #selector(sendFeedback), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
@@ -51,6 +67,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.showPanel()
         }
         mouseShakeDetector.startMonitoring()
+
+        // Global hotkey: Cmd+Shift+C (keyCode 8 = C)
+        globalHotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.modifierFlags.intersection([.command, .shift, .option, .control]) == [.command, .shift],
+                  event.keyCode == 8 else { return }
+            DispatchQueue.main.async { self?.togglePanel() }
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if let monitor = globalHotkeyMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        ClipboardMonitor.shared.stopMonitoring()
     }
     
     private func createFloatingPanel() {
@@ -99,6 +129,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     
+    @objc func toggleClipboardHistory() {
+        ClipboardMonitor.shared.isEnabled.toggle()
+        let enabled = ClipboardMonitor.shared.isEnabled
+        clipboardHistoryMenuItem?.title = enabled ? "Clipboard History: On" : "Clipboard History: Off"
+        clipboardHistoryMenuItem?.state = enabled ? .on : .off
+    }
+
     @objc func quitApp() {
         NSApplication.shared.terminate(nil)
     }

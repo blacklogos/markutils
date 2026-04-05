@@ -152,92 +152,144 @@ struct RichTextTransformer {
         return markdown
     }
     // MARK: - Markdown to HTML (Enhanced)
-    
+
     static func markdownToHTML(_ markdown: String) -> String {
         var html = ""
         let lines = markdown.components(separatedBy: .newlines)
+        var i = 0
         var inParagraph = false
         var inList = false
-        
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            
-            // Empty lines close paragraphs and lists
+
+        while i < lines.count {
+            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
+
+            // Empty lines close open blocks
             if trimmed.isEmpty {
-                if inParagraph {
-                    html += "</p>\n"
-                    inParagraph = false
+                if inParagraph { html += "</p>\n"; inParagraph = false }
+                if inList { html += "</ul>\n"; inList = false }
+                i += 1; continue
+            }
+
+            // Table: collect all consecutive pipe-prefixed lines
+            if trimmed.hasPrefix("|") {
+                if inParagraph { html += "</p>\n"; inParagraph = false }
+                if inList { html += "</ul>\n"; inList = false }
+                var tableLines: [String] = []
+                while i < lines.count && lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("|") {
+                    tableLines.append(lines[i].trimmingCharacters(in: .whitespaces))
+                    i += 1
                 }
-                if inList {
-                    html += "</ul>\n"
-                    inList = false
-                }
+                html += renderMarkdownTable(tableLines)
                 continue
             }
-            
+
             // Horizontal Rule
             if trimmed == "---" || trimmed == "***" || trimmed == "___" {
                 if inParagraph { html += "</p>\n"; inParagraph = false }
                 if inList { html += "</ul>\n"; inList = false }
                 html += "<hr />\n"
-                continue
+                i += 1; continue
             }
-            
+
             // Headers
             if trimmed.hasPrefix("#") {
                 if inParagraph { html += "</p>\n"; inParagraph = false }
                 if inList { html += "</ul>\n"; inList = false }
-                
                 let level = trimmed.prefix(while: { $0 == "#" }).count
                 let content = String(trimmed.dropFirst(level)).trimmingCharacters(in: .whitespaces)
-                let parsedContent = parseInline(content)
                 let slug = content.lowercased()
                     .components(separatedBy: .whitespacesAndNewlines)
                     .joined(separator: "-")
                     .filter { $0.isLetter || $0.isNumber || $0 == "-" }
-                
-                html += "<h\(level) id=\"\(slug)\">\(parsedContent)</h\(level)>\n"
+                html += "<h\(level) id=\"\(slug)\">\(parseInline(content))</h\(level)>\n"
+                i += 1; continue
             }
+
             // Blockquotes
-            else if trimmed.hasPrefix("> ") {
+            if trimmed.hasPrefix(">") {
                 if inParagraph { html += "</p>\n"; inParagraph = false }
                 if inList { html += "</ul>\n"; inList = false }
-                
-                let content = String(trimmed.dropFirst(2))
-                let parsedContent = parseInline(content)
-                html += "<blockquote>\n<p>\(parsedContent)</p>\n</blockquote>\n"
+                let content = trimmed.hasPrefix("> ") ? String(trimmed.dropFirst(2)) : String(trimmed.dropFirst(1))
+                html += "<blockquote>\n<p>\(parseInline(content))</p>\n</blockquote>\n"
+                i += 1; continue
             }
+
             // List items
-            else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
+            if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
                 if inParagraph { html += "</p>\n"; inParagraph = false }
-                if !inList {
-                    html += "<ul>\n"
-                    inList = true
-                }
-                let content = String(trimmed.dropFirst(2))
-                let parsedContent = parseInline(content)
-                html += "<li>\(parsedContent)</li>\n"
+                if !inList { html += "<ul>\n"; inList = true }
+                html += "<li>\(parseInline(String(trimmed.dropFirst(2))))</li>\n"
+                i += 1; continue
             }
+
             // Paragraphs
-            else {
-                if inList { html += "</ul>\n"; inList = false }
-                
-                let parsedContent = parseInline(trimmed)
-                
-                if !inParagraph {
-                    html += "<p>"
-                    inParagraph = true
-                } else {
-                    html += " " // Join lines in same paragraph
-                }
-                html += parsedContent
-            }
+            if inList { html += "</ul>\n"; inList = false }
+            if !inParagraph { html += "<p>"; inParagraph = true } else { html += " " }
+            html += parseInline(trimmed)
+            i += 1
         }
-        
+
         if inParagraph { html += "</p>" }
         if inList { html += "</ul>" }
-        
+
         return html.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // Renders a block of | -prefixed lines as an HTML table.
+    // First non-separator row(s) → <thead>, separator row (---|---) marks the split, rest → <tbody>.
+    private static func renderMarkdownTable(_ lines: [String]) -> String {
+        var headerLines: [String] = []
+        var bodyLines: [String] = []
+        var separatorFound = false
+
+        for line in lines {
+            let cells = parseTableRow(line)
+            // Separator: every cell is only dashes and colons (e.g. "---", ":---:", "---:")
+            let isSeparator = !cells.isEmpty && cells.allSatisfy { cell in
+                !cell.isEmpty && cell.allSatisfy { $0 == "-" || $0 == ":" }
+            }
+            if isSeparator {
+                separatorFound = true
+            } else if separatorFound {
+                bodyLines.append(line)
+            } else {
+                headerLines.append(line)
+            }
+        }
+
+        // No separator → treat everything as body rows
+        if !separatorFound { bodyLines = headerLines; headerLines = [] }
+
+        var html = "<table>\n"
+
+        if !headerLines.isEmpty {
+            html += "<thead>\n"
+            for line in headerLines {
+                let cells = parseTableRow(line)
+                html += "<tr>" + cells.map { "<th>\(parseInline($0))</th>" }.joined() + "</tr>\n"
+            }
+            html += "</thead>\n"
+        }
+
+        if !bodyLines.isEmpty {
+            html += "<tbody>\n"
+            for line in bodyLines {
+                let cells = parseTableRow(line)
+                guard !cells.isEmpty else { continue }
+                html += "<tr>" + cells.map { "<td>\(parseInline($0))</td>" }.joined() + "</tr>\n"
+            }
+            html += "</tbody>\n"
+        }
+
+        html += "</table>\n"
+        return html
+    }
+
+    private static func parseTableRow(_ line: String) -> [String] {
+        line.trimmingCharacters(in: .whitespaces)
+            .split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
     
     // MARK: - HTML to Markdown (Custom)
@@ -292,20 +344,20 @@ struct RichTextTransformer {
     
     private static func parseInline(_ text: String) -> String {
         var result = text
-        
-        // Bold (**text**)
-        result = result.replacingOccurrences(of: "\\*\\*([^*]+)\\*\\*", with: "<strong>$1</strong>", options: .regularExpression)
-        
-        // Italic (*text* or _text_)
-        result = result.replacingOccurrences(of: "\\*([^*]+)\\*", with: "<em>$1</em>", options: .regularExpression)
-        result = result.replacingOccurrences(of: "_([^_]+)_", with: "<em>$1</em>", options: .regularExpression)
-        
+
+        // Links ([text](url)) — must be before bold/italic to avoid mangling URLs
+        result = result.replacingOccurrences(of: "\\[([^\\]]+)\\]\\(([^)]+)\\)", with: "<a href=\"$2\" target=\"_blank\">$1</a>", options: .regularExpression)
+
+        // Bold (**text**) — allow any content inside including already-parsed HTML
+        result = result.replacingOccurrences(of: "\\*\\*(.+?)\\*\\*", with: "<strong>$1</strong>", options: .regularExpression)
+
+        // Italic (*text* or _text_) — non-greedy, avoid matching inside URLs/HTML
+        result = result.replacingOccurrences(of: "(?<![\\w*])\\*([^*]+?)\\*(?![\\w*])", with: "<em>$1</em>", options: .regularExpression)
+        result = result.replacingOccurrences(of: "(?<![\\w_])_([^_]+?)_(?![\\w_])", with: "<em>$1</em>", options: .regularExpression)
+
         // Code (`text`)
         result = result.replacingOccurrences(of: "`([^`]+)`", with: "<code>$1</code>", options: .regularExpression)
-        
-        // Links ([text](url))
-        result = result.replacingOccurrences(of: "\\[([^\\]]+)\\]\\(([^)]+)\\)", with: "<a href=\"$2\">$1</a>", options: .regularExpression)
-        
+
         return result
     }
 }

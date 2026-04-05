@@ -9,9 +9,6 @@ struct ClipApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
-                .frame(width: 600, height: 475)
-                .fixedSize() // Prevent resizing
         }
-        .windowResizability(.contentSize) // Lock window size to content
     }
 }

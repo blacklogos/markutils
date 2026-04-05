@@ -1,48 +1,128 @@
 # Clip
 
-**Clip** is a lightweight, always-available macOS menu bar assistant designed for content creators. It bridges the gap between raw assets and finished presentations, serving as a smart clipboard, asset manager, and AI-powered transformation tool.
+A lightweight macOS menu bar utility for content creators. Lives in the menu bar — no Dock icon, always one click away.
 
-## Features
+**Version 1.1.0** · macOS 14+ · Swift 5.9 · No dependencies
 
-### 🖥️ Native macOS Experience
-- **Menu Bar App**: Lives in your menu bar (accessory mode), enabling quick access without cluttering your Dock.
-- **Floating Panel**: The window stays on top and doesn't disappear when you interact with other apps, making it the perfect sidekick.
-- **Mouse Shake Reveal**: Shake your mouse cursor vigorously to instantly bring Clip to the foreground.
+---
 
-### 🗂️ Asset Management ("The Vault")
-- **Drag & Drop**: Simply drag images or text into the app to save them instantly.
-- **Persistent Storage**: Your assets are saved safely using SwiftData and persist across app launches.
-- **Collapsible Folders**: Organize your assets into folders to keep your vault tidy.
-- **Compact View**: Switch between a grid view and a compact list view to manage large collections efficiently.
-- **Multi-format Export**: Drag assets out to your Desktop, Keynote, PowerPoint, or other apps.
+## What it does
 
-### ⚡ Transformation Tools
-Clip automatically detects the content you paste and offers meaningful transformations:
-- **Markdown ↔ Tables**: Convert Markdown tables to CSV or TSV for Excel/Google Sheets.
-- **Markdown ↔ Rich Text**: Convert Markdown to formatted Rich Text for Apple Notes, Pages, or Mail.
-- **Smart Detection**: The app identifies your content type (tables, text) and switches to the correct mode automatically.
+Four tabs, each purpose-built:
 
-## Installation & Running
+### 🗂 Assets — The Vault
+Drag images and text from anywhere into the vault. Organise into folders. Drag assets back out to Keynote, PowerPoint, Pages, or the Desktop. Everything persists across app launches (JSON, `~/Library/Application Support/Clip/`).
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/blacklogos/markutils.git
-   cd markutils
-   ```
+- Drag & drop import from Finder, browsers, or other apps
+- Folder organisation with drag-to-nest
+- Grid or compact list view
+- Full-text search
+- Right-click context menu (rename, delete, move)
 
-2. **Run the app**
-   ```bash
-   swift run
-   ```
+### ⇄ Transform
+Paste content — Clip auto-detects the type and offers the right actions.
 
-## Usage Tips
+| Detected type | Actions |
+|---------------|---------|
+| Markdown | Preview (rendered), Copy HTML, Copy Rich Text |
+| Markdown table | To CSV, To TSV, Preview |
+| TSV / Spreadsheet | To Markdown table, To CSV |
+| CSV | To Markdown table, To TSV |
+| HTML | To Markdown |
+| Plain text | To Bullet List, To Numbered List |
 
-- **Toggle the App**: Click the paperclip icon in the menu bar or used the **Mouse Shake** gesture.
-- **Import Assets**: Drag files directly from Finder onto the app window.
-- **Organize**: Use the "Folder" icon to create new headers and drag items into them.
-- **Transform Text**: Paste text into the input area, select your desired transformation, and click the standard copy button or the "Swap" button to reverse the process.
+Drag the rendered preview into any rich-text app (Apple Notes, Mail, Pages) to drop in formatted RTF.
 
-## Contributing
+### Aa Text Formatter
+Two modes, toggled by the **Format / Convert** segmented picker:
 
-**🤖 AI Agents & Developers:**
-Please read [AGENT_RULES.md](AGENT_RULES.md) before making any changes. This project enforces strict regression testing to prevent feature breakage.
+**Format mode** — One toolbar row with primary actions and an overflow ⋯ menu:
+- Unicode bold/italic character styling (𝐁 𝘐)
+- Case transforms: ABC / Abc
+- Bullet lists (•, ✅, 1.)
+- Separator line
+- Overflow: more bullet types, move line up/down, emoji inserts, number emojis, footer stamp
+
+**Convert mode** — Social-media-ready Unicode output:
+- **MD → Unicode** — converts full markdown document to Unicode-styled plain text
+  (`**bold**` → 𝐛𝐨𝐥𝐝, `# H1` → 𝐁𝐎𝐋𝐃 HEADER, `` `code` `` → 𝚌𝚘𝚍𝚎, `- item` → • item, etc.)
+- **Table → ASCII** — converts markdown tables to box-drawing tables (┌─┬─┐ style)
+- Style buttons: apply bold / italic / bold-italic / monospace / script / small-caps / underline / strikethrough to selected text
+- **Revert** — strips all Unicode styling back to plain ASCII
+
+### 📄 Snippets
+Store reusable text snippets with titles. Click to copy.
+
+---
+
+## Running
+
+```bash
+git clone https://github.com/blacklogos/markutils.git
+cd markutils
+swift run
+```
+
+Requires Xcode Command Line Tools (`xcode-select --install`) or full Xcode.
+
+---
+
+## Interface
+
+- **Menu bar icon**: left-click to show/hide the panel; right-click for the menu
+- **Mouse shake**: shake the cursor vigorously to reveal the panel from any app
+- **Pin button** (📌): keeps the window floating above other apps
+- **Theme toggle** (☀️/🌙/⊙): cycles light → dark → system
+- **Compressed header**: single-row with icon tabs, draggable gap in the middle
+- **Status bar**: word count · char count · cursor line/col on text tabs
+
+---
+
+## Architecture
+
+```
+Sources/
+├── AppDelegate.swift          # NSStatusItem, FloatingPanel lifecycle, mouse shake
+├── ClipApp.swift              # @main, SwiftUI app entry
+├── FloatingPanel.swift        # Custom NSPanel (non-activating, floating level)
+├── Theme/
+│   └── AppColors.swift        # Warm palette — dynamic light/dark via NSColor provider
+├── Models/
+│   ├── AssetStore.swift       # @Observable singleton, JSON persistence
+│   └── Snippet.swift          # Codable snippet model
+├── Services/
+│   └── ClipboardMonitor.swift # NSPasteboard change monitoring
+├── Utilities/
+│   ├── RichTextTransformer.swift  # Markdown ↔ HTML ↔ NSAttributedString
+│   ├── TableTransformer.swift     # TSV/CSV ↔ Markdown table
+│   └── UnicodeTextFormatter.swift # Unicode style maps, MD→Unicode, table→ASCII box
+└── Views/
+    ├── ContentView.swift          # Root view, tab bar, theme
+    ├── AssetGridView.swift        # Vault grid + search + drag/drop
+    ├── QuickActionsView.swift     # Auto-detect transform tab
+    ├── SocialMediaFormatterView.swift  # Text Formatter (Format + Convert modes)
+    ├── SnippetsView.swift         # Snippets tab
+    ├── HTMLPreviewView.swift      # WKWebView markdown preview (warm CSS)
+    ├── StatusBarView.swift        # Word/char/cursor status bar
+    └── ...                        # Supporting views
+```
+
+**Persistence:** Plain `Codable` + JSON, no SwiftData or Core Data.  
+**Dependencies:** None. Pure Swift + AppKit + SwiftUI + WebKit.
+
+---
+
+## Build & Test
+
+```bash
+swift build          # compile
+swift run            # run
+swift test           # unit tests (requires full Xcode)
+./scripts/verify_release.sh  # pre-release check
+```
+
+---
+
+## For AI agents & contributors
+
+Read [AGENT_RULES.md](AGENT_RULES.md) before making changes. Regression testing is mandatory — run `./scripts/verify_release.sh` before marking any task complete.

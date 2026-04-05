@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var socialInput = ""
     @State private var showOnboarding = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @State private var snippetStore = SnippetStore.shared
     
     enum AppTheme: String, CaseIterable, Identifiable {
         case system = "System"
@@ -26,53 +27,43 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Custom Header
-            VStack(spacing: 12) {
-                // Top Row: Window Controls | Title | Pin
-                HStack {
-                    // Traffic Lights (Handled by System)
-                    Spacer()
-                        .frame(width: 60) // Placeholder for system controls
-                    
-                    Spacer()
-                    
-                    // Title
-                    HStack(spacing: 6) {
-                        Image(systemName: "paperclip")
-                            .font(.headline)
-                        Text("Clip")
-                            .font(.headline)
-                    }
-                    .foregroundStyle(.primary)
-                    
-                    Spacer()
-                    
-                    // Pin Button
-                    Button(action: togglePin) {
-                        Image(systemName: isPinned ? "pin.fill" : "pin")
-                            .font(.system(size: 12))
-                            .foregroundStyle(isPinned ? .blue : .secondary)
-                            .frame(width: 24, height: 24)
-                            .background(isPinned ? Color.blue.opacity(0.1) : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .help(isPinned ? "Unpin from top" : "Pin to top")
+            // Compressed single-row header: tabs left, spacer (draggable), controls right
+            HStack(spacing: 8) {
+                // Spacer for traffic-light buttons (macOS injects them on the left)
+                Spacer().frame(width: 72)
+
+                Picker("Tabs", selection: $selectedTab) {
+                    Image(systemName: "square.grid.2x2")  .tag(0).help("Assets")
+                    Image(systemName: "arrow.left.arrow.right").tag(1).help("Transform")
+                    Image(systemName: "textformat.abc")   .tag(2).help("Text Formatter")
+                    Image(systemName: "doc.text")         .tag(3).help("Snippets")
                 }
-                
-                // Tab Navigation
-            Picker("Tabs", selection: $selectedTab) {
-                Text("Assets").tag(0)
-                Text("Transform").tag(1)
-                Text("Text Formatter").tag(2)
-                Text("AI").tag(3)
+                .pickerStyle(.segmented)
+                .frame(width: 180)
+
+                Spacer() // draggable gap
+
+                // Theme cycle: system → light → dark → system
+                Button(action: cycleTheme) {
+                    Image(systemName: themeIcon)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Theme: \(appTheme.rawValue) — click to cycle")
+
+                // Pin button
+                Button(action: togglePin) {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .font(.system(size: 12))
+                        .foregroundStyle(isPinned ? AppColors.accent : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(isPinned ? "Unpin from top" : "Pin to top")
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            }
-            .padding(12)
-            .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(AppColors.toolbarBackground)
             .background(WindowDragView()) // Make header draggable
             
             Divider()
@@ -83,11 +74,12 @@ struct ContentView: View {
                 case 0:
                     AssetGridView()
                 case 1:
-                    TransformerView()
+                    QuickActionsView()
                 case 2:
                     SocialMediaFormatterView(text: $socialInput)
                 case 3:
-                    AIView()
+                    SnippetsView()
+                        .environment(snippetStore)
                 default:
                     Text("Unknown Tab")
                 }
@@ -95,7 +87,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(AppColors.windowBackground)
         .edgesIgnoringSafeArea(.top)
         .preferredColorScheme(appTheme.colorScheme)
         .sheet(isPresented: $showOnboarding) {
@@ -121,6 +113,22 @@ struct ContentView: View {
         isPinned.toggle()
         if let window = NSApp.mainWindow {
             window.level = isPinned ? .floating : .normal
+        }
+    }
+
+    private func cycleTheme() {
+        switch appTheme {
+        case .system: appTheme = .light
+        case .light:  appTheme = .dark
+        case .dark:   appTheme = .system
+        }
+    }
+
+    private var themeIcon: String {
+        switch appTheme {
+        case .system: return "circle.lefthalf.filled"
+        case .light:  return "sun.max"
+        case .dark:   return "moon"
         }
     }
 }

@@ -129,9 +129,8 @@ struct TransformerView: View {
                 VStack(spacing: 0) {
                     editorToolbar(title: "Preview", text: $textOutput, isInput: false)
                     
-                    // Use MarkdownPreviewView for rendered markdown
-                    MarkdownPreviewView(attributedString: RichTextTransformer.markdownToRichText(textInput))
-                        .background(Color(NSColor.textBackgroundColor))
+                    // Use HTMLPreviewView for rendered markdown via WebKit
+                    HTMLPreviewView(htmlContent: RichTextTransformer.markdownToHTML(textInput))
                 }
                 .frame(maxWidth: viewMode == .split ? geometry.size.width / 2 : .infinity)
             }

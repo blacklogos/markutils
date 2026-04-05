@@ -4,15 +4,27 @@ import UniformTypeIdentifiers
 
 struct AssetGridView: View {
     @Environment(AssetStore.self) private var store
-    
-    private var assets: [Asset] {
-        store.assets.sorted { $0.creationDate > $1.creationDate }
-    }
+
+    @State private var searchText = ""
     @State private var draggingAsset: Asset?
     @State private var showFileImporter = false
     @State private var isCompactMode = false
-    
-    // Filtered assets
+
+    private var allAssets: [Asset] {
+        store.assets.sorted { $0.creationDate > $1.creationDate }
+    }
+
+    // Applies search filter when active
+    private var assets: [Asset] {
+        guard !searchText.isEmpty else { return allAssets }
+        let q = searchText.lowercased()
+        return allAssets.filter { asset in
+            (asset.name?.lowercased().contains(q) ?? false) ||
+            (asset.textContent?.lowercased().contains(q) ?? false)
+        }
+    }
+
+    // Filtered sections
     var folderAssets: [Asset] { assets.filter { $0.type == .folder } }
     var imageAssets: [Asset] { assets.filter { $0.type == .image } }
     var textAssets: [Asset] { assets.filter { $0.type == .text } }
@@ -33,7 +45,7 @@ struct AssetGridView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                
+
                 Button(action: { withAnimation { isCompactMode.toggle() } }) {
                     Label("View", systemImage: isCompactMode ? "list.bullet" : "square.grid.2x2")
                 }
@@ -43,6 +55,28 @@ struct AssetGridView: View {
             .padding(.horizontal)
             .padding(.top, 8)
             .padding(.bottom, 4)
+
+            // Search Field
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search assets…", text: $searchText)
+                    .textFieldStyle(.plain)
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(AppColors.toolbarBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(NSColor.separatorColor)))
+            .padding(.horizontal)
+            .padding(.bottom, 6)
             
             ScrollView {
                 if isCompactMode {
@@ -156,8 +190,10 @@ struct AssetGridView: View {
                 handleFileImport(result)
             }
             .overlay {
-                if assets.isEmpty {
+                if store.assets.isEmpty {
                     ContentUnavailableView("No Assets", systemImage: "square.stack.3d.up.slash", description: Text("Drag and drop files here,\npaste content, or click Add Files"))
+                } else if assets.isEmpty && !searchText.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 }
             }
         }
@@ -170,12 +206,12 @@ struct AssetGridView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                .background(AppColors.windowBackground.opacity(0.9))
                 .cornerRadius(4)
             Spacer()
         }
         .padding(.vertical, 4)
-        .background(Color(NSColor.windowBackgroundColor)) // Sticky header background
+        .background(AppColors.windowBackground) // Sticky header background
     }
     
     private func createItemProvider(for asset: Asset) -> NSItemProvider {
@@ -400,97 +436,145 @@ struct AssetItemView: View {
     @Environment(AssetStore.self) private var store
     @State private var isHovering = false
     @State private var showCopiedFeedback = false
-    
+    @State private var isRenaming = false
+    @State private var editName = ""
+
+    private var displayName: String {
+        asset.name ?? (asset.type == .text ? String(asset.textContent?.prefix(20) ?? "Text") : "Image")
+    }
+
+    // Clipboard history items show a clock overlay badge
+    private var isClipboardItem: Bool {
+        asset.name?.hasPrefix("Clipboard ") == true
+    }
+
     var body: some View {
-        ZStack {
-            // Content
-            Group {
-                if asset.type == .image, let data = asset.imageData, let nsImage = NSImage(data: data) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                } else if asset.type == .text {
-                    Text(asset.textContent ?? "")
-                        .font(.caption)
-                        .frame(width: 80, height: 80)
-                        .background(Color.gray.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+        VStack(spacing: 4) {
+            ZStack(alignment: .topTrailing) {
+                // Thumbnail
+                Group {
+                    if asset.type == .image, let data = asset.imageData, let nsImage = NSImage(data: data) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 80)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else if asset.type == .text {
+                        Text(asset.textContent ?? "")
+                            .font(.caption)
+                            .frame(width: 80, height: 80)
+                            .background(Color.gray.opacity(0.2))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .padding(4)
+                    }
+                }
+
+                // Clipboard badge
+                if isClipboardItem {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.white)
+                        .padding(3)
+                        .background(Color.gray.opacity(0.7))
+                        .clipShape(Circle())
                         .padding(4)
                 }
-            }
-            
-            // Hover Overlay
-            if isHovering {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.black.opacity(0.4))
-                        .frame(width: 80, height: 80)
-                    
-                    // Remove Button (Top Right)
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Button(action: deleteAsset) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .padding(4)
-                                    .background(Color.red.opacity(0.8))
-                                    .clipShape(Circle())
+
+                // Hover overlay
+                if isHovering {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.black.opacity(0.4))
+                            .frame(width: 80, height: 80)
+
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Button(action: deleteAsset) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .padding(4)
+                                        .background(Color.red.opacity(0.8))
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+                                .help("Remove")
+                                .padding(4)
                             }
-                            .buttonStyle(.plain)
-                            .help("Remove")
-                            .padding(4)
+                            Spacer()
                         }
-                        Spacer()
+
+                        Button(action: copyAsset) {
+                            Text(showCopiedFeedback ? "Copied" : "Copy")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(showCopiedFeedback ? Color.green : Color.blue)
+                                .cornerRadius(4)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    
-                    // Copy Button (Center)
-                    Button(action: copyAsset) {
-                        Text(showCopiedFeedback ? "Copied" : "Copy")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(showCopiedFeedback ? Color.green : Color.blue)
-                            .cornerRadius(4)
-                    }
-                    .buttonStyle(.plain)
                 }
             }
+            .frame(width: 80, height: 80)
+
+            // Name label / rename field
+            if isRenaming {
+                TextField("Name", text: $editName)
+                    .textFieldStyle(.plain)
+                    .font(.caption2)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 80)
+                    .onSubmit { commitRename() }
+                    .onExitCommand { isRenaming = false }
+            } else {
+                Text(displayName)
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(width: 80)
+                    .onTapGesture(count: 2) { startRename() }
+            }
         }
-        .contentShape(Rectangle()) // Fix hover hit testing
+        .contentShape(Rectangle())
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
             }
         }
     }
-    
+
+    private func startRename() {
+        editName = asset.name ?? displayName
+        isRenaming = true
+    }
+
+    private func commitRename() {
+        let trimmed = editName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { asset.name = trimmed }
+        store.save()
+        isRenaming = false
+    }
+
     private func copyAsset() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        
+
         if asset.type == .image, let data = asset.imageData {
             pasteboard.setData(data, forType: .png)
         } else if asset.type == .text, let text = asset.textContent {
             pasteboard.setString(text, forType: .string)
         }
-        
-        withAnimation {
-            showCopiedFeedback = true
-        }
-        
+
+        withAnimation { showCopiedFeedback = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation {
-                showCopiedFeedback = false
-            }
+            withAnimation { showCopiedFeedback = false }
         }
     }
-    
+
     private func deleteAsset() {
         store.delete(asset)
     }
@@ -521,39 +605,62 @@ struct CompactAssetRowView: View {
     @Environment(AssetStore.self) private var store
     @State private var isHovering = false
     @State private var showCopiedFeedback = false
-    
+    @State private var isRenaming = false
+    @State private var editName = ""
+
+    private var isClipboardItem: Bool { asset.name?.hasPrefix("Clipboard ") == true }
+
     var body: some View {
         HStack {
             // Icon/Thumbnail
-            if asset.type == .image, let data = asset.imageData, let nsImage = NSImage(data: data) {
-                 Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 24, height: 24)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            } else {
-                Image(systemName: asset.type == .text ? "doc.text" : "doc")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
+            ZStack(alignment: .bottomTrailing) {
+                if asset.type == .image, let data = asset.imageData, let nsImage = NSImage(data: data) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 24, height: 24)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    Image(systemName: asset.type == .text ? "doc.text" : "doc")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                }
+                if isClipboardItem {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 7))
+                        .foregroundStyle(.white)
+                        .padding(2)
+                        .background(Color.gray.opacity(0.7))
+                        .clipShape(Circle())
+                        .offset(x: 4, y: 4)
+                }
             }
-            
-            // Name/Content Preview
-            Text(assetName)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            
+
+            // Name/Content Preview — double-click to rename
+            if isRenaming {
+                TextField("Name", text: $editName)
+                    .textFieldStyle(.plain)
+                    .onSubmit { commitRename() }
+                    .onExitCommand { isRenaming = false }
+            } else {
+                Text(assetName)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .onTapGesture(count: 2) { startRename() }
+            }
+
             Spacer()
-            
+
             // Hover Actions
             if isHovering {
                 HStack(spacing: 8) {
                     Button(action: copyAsset) {
-                         Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
+                        Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
                             .foregroundStyle(showCopiedFeedback ? .green : .secondary)
                     }
                     .buttonStyle(.plain)
                     .help("Copy to Clipboard")
-                    
+
                     Button(action: deleteAsset) {
                         Image(systemName: "trash")
                             .foregroundStyle(.red.opacity(0.8))
@@ -574,12 +681,23 @@ struct CompactAssetRowView: View {
             }
         }
     }
-    
-    // Helper to get a display name
+
     private var assetName: String {
         if let name = asset.name { return name }
         if let text = asset.textContent { return text.prefix(50).replacingOccurrences(of: "\n", with: " ") }
         return "Asset"
+    }
+
+    private func startRename() {
+        editName = assetName
+        isRenaming = true
+    }
+
+    private func commitRename() {
+        let trimmed = editName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { asset.name = trimmed }
+        store.save()
+        isRenaming = false
     }
     
     private func copyAsset() {

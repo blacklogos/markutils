@@ -14,6 +14,8 @@ class FloatingPanel: NSPanel {
         self.standardWindowButton(.closeButton)?.isHidden = true
         self.standardWindowButton(.miniaturizeButton)?.isHidden = true
         self.standardWindowButton(.zoomButton)?.isHidden = true
+        self.minSize = NSSize(width: 450, height: 400)
+        self.setFrameAutosaveName("ClipFloatingPanel")
     }
     
     override var canBecomeKey: Bool {

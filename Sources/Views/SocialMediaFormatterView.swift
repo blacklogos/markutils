@@ -6,133 +6,145 @@ struct SocialMediaFormatterView: View {
     @Binding var text: String
     @State private var footer: String = "Lau1k © 2025"
     @State private var editor: NSTextView?
-    
-    // Undo/Redo stacks
+    @State private var selectedMode: Int = 0  // 0 = Format, 1 = Convert
+    @State private var cursorRange: NSRange? = nil
+
+    // History stacks (used by Convert mode full-text replacements)
     @State private var undoStack: [String] = []
     @State private var redoStack: [String] = []
-    
+
     @State private var showCopied = false
-    @State private var showAIMenu = false
-    @State private var isProcessingAI = false
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Toolbar
-            VStack(spacing: 8) {
-                // Row 1: Undo/Redo | Styles
-                HStack(spacing: 6) {
-                    Group {
-                        Button(action: undo) { Text("Undo") }
-                            .disabled(undoStack.isEmpty)
-                        Button(action: redo) { Text("Redo") }
-                            .disabled(redoStack.isEmpty)
-                    }
-                    .buttonStyle(ToolbarButtonStyle())
-                    
-                    Divider()
-                        .frame(height: 20)
-                    
-                    Group {
-                        Button(action: { transformSelection(toBold) }) { Text("B").bold() }
-                        Button(action: { transformSelection(toItalic) }) { Text("I").italic() }
-                        Button(action: { transformSelection { $0.uppercased() } }) { Text("ABC") }
-                        Button(action: { transformSelection { $0.capitalized } }) { Text("Abc") }
-                        Button(action: { transformSelection { $0.lowercased() } }) { Text("abc") }
-                        Button(action: removeDoubleSpaces) { Text("Fix␣␣") }
-                    }
-                    .buttonStyle(ToolbarButtonStyle())
-                    
-                    Spacer()
+            // ── Single toolbar row ────────────────────────────────────────
+            HStack(spacing: 6) {
+                // Format | Convert picker
+                Picker("", selection: $selectedMode) {
+                    Text("Format").tag(0)
+                    Text("Convert").tag(1)
                 }
-                
-                // Row 2: Lists | Move | Separator | Emojis
-                HStack(spacing: 6) {
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+
+                Divider().frame(height: 20)
+
+                if selectedMode == 0 {
+                    // ── Format mode: primary actions ──
                     Group {
-                        Button(action: { addBulletList("•") }) { Text("•") }
-                        Button(action: { addBulletList("✅") }) { Text("✅") }
-                        Button(action: { addBulletList("🔸") }) { Text("🔸") }
-                        Button(action: { addBulletList("⭐️") }) { Text("⭐️") }
-                        Button(action: { addBulletList("🔹") }) { Text("🔹") }
-                        Button(action: { addBulletList("-") }) { Text("-") }
-                        Button(action: addNumberedList) { Text("1.") }
+                        Button(action: { transformSelection { UnicodeTextFormatter.apply(.bold, to: $0) } })    { Text("𝐁") }
+                        Button(action: { transformSelection { UnicodeTextFormatter.apply(.italic, to: $0) } })  { Text("𝘐") }
+                        Button(action: { transformSelection { $0.uppercased() } })  { Text("ABC") }
+                        Button(action: { transformSelection { $0.capitalized } })   { Text("Abc") }
                     }
                     .buttonStyle(ToolbarButtonStyle())
-                    
-                    Divider()
-                        .frame(height: 20)
-                    
+
+                    Divider().frame(height: 20)
+
                     Group {
-                        Button(action: { moveLine(direction: -1) }) { Image(systemName: "arrow.up") }
-                        Button(action: { moveLine(direction: 1) }) { Image(systemName: "arrow.down") }
+                        Button(action: { addBulletList("•") })   { Text("•") }
+                        Button(action: { addBulletList("✅") })  { Text("✅") }
+                        Button(action: addNumberedList)          { Text("1.") }
+                        Button(action: addSeparator)             { Text("———") }
                     }
                     .buttonStyle(ToolbarButtonStyle())
-                    
-                    Group {
-                        Button(action: addSeparator) { Text("———") }
-                    }
-                    .buttonStyle(ToolbarButtonStyle())
-                    
-                    Divider()
-                        .frame(height: 20)
-                    
-                    Group {
-                        Button(action: { insertText("💡") }) { Text("💡") }
-                        Button(action: { insertText("🚀") }) { Text("🚀") }
-                        Button(action: { insertText("✨") }) { Text("✨") }
-                        Button(action: { insertText("❤️") }) { Text("❤️") }
-                        Button(action: { insertText("👉") }) { Text("👉") }
-                    }
-                    .buttonStyle(ToolbarButtonStyle())
-                    
+
                     Spacer()
-                }
-                
-                // Row 3: Numbers | Footer | Copy
-                HStack(spacing: 6) {
-                    ForEach(0..<10) { num in
-                        Button(action: { insertNumberEmoji(num) }) { Text("\(num)") }
-                            .buttonStyle(ToolbarButtonStyle())
+
+                    // Overflow menu for less-common actions
+                    Menu {
+                        Section("Bullets") {
+                            Button("🔸") { addBulletList("🔸") }
+                            Button("⭐️") { addBulletList("⭐️") }
+                            Button("🔹") { addBulletList("🔹") }
+                            Button("— (dash)") { addBulletList("-") }
+                        }
+                        Section("Move") {
+                            Button("Move Line Up")   { moveLine(direction: -1) }
+                            Button("Move Line Down") { moveLine(direction:  1) }
+                        }
+                        Section("Fix") {
+                            Button("Fix Double Spaces") { removeDoubleSpaces() }
+                            Button("Lowercase")         { transformSelection { $0.lowercased() } }
+                        }
+                        Section("Emojis") {
+                            Button("💡 Lightbulb") { insertText("💡") }
+                            Button("🚀 Rocket")    { insertText("🚀") }
+                            Button("✨ Sparkles")  { insertText("✨") }
+                            Button("❤️ Heart")     { insertText("❤️") }
+                            Button("👉 Point")     { insertText("👉") }
+                        }
+                        Section("Number Emojis") {
+                            ForEach(0..<10) { n in Button("\(n)") { insertNumberEmoji(n) } }
+                        }
+                        Divider()
+                        Button("Add Footer") { addFooter() }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                    
-                    Divider()
-                        .frame(height: 20)
-                    
-                    Button(action: addFooter) { Text("Footer").foregroundStyle(.white) }
-                        .buttonStyle(ToolbarButtonStyle(backgroundColor: .green))
-                    
-                    Button(action: copyText) {
-                        Text(showCopied ? "Copied" : "Copy")
-                            .foregroundStyle(.white)
-                            .frame(minWidth: 60)
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 28)
+                    .help("More options")
+
+                } else {
+                    // ── Convert mode ──
+                    Button("MD→Unicode") { convertMarkdownToUnicode() }.buttonStyle(ToolbarButtonStyle())
+                    Button("Table→ASCII") { convertTableToASCII() }.buttonStyle(ToolbarButtonStyle())
+
+                    Divider().frame(height: 20)
+
+                    Group {
+                        Button("𝐁")  { transformSelection { UnicodeTextFormatter.apply(.bold, to: $0) } }
+                        Button("𝘐")  { transformSelection { UnicodeTextFormatter.apply(.italic, to: $0) } }
+                        Button("𝒃𝒊") { transformSelection { UnicodeTextFormatter.apply(.boldItalic, to: $0) } }
+                        Button("𝚖")  { transformSelection { UnicodeTextFormatter.apply(.monospace, to: $0) } }
+                        Button("𝒮")  { transformSelection { UnicodeTextFormatter.apply(.script, to: $0) } }
+                        Button("ꜱᴄ") { transformSelection { UnicodeTextFormatter.apply(.smallCaps, to: $0) } }
+                        Button("u̲")  { transformSelection { UnicodeTextFormatter.apply(.underline, to: $0) } }
+                        Button("s̶")  { transformSelection { UnicodeTextFormatter.apply(.strikethrough, to: $0) } }
                     }
-                    .buttonStyle(ToolbarButtonStyle(backgroundColor: showCopied ? .gray : .blue))
-                    
+                    .buttonStyle(ToolbarButtonStyle())
+
                     Spacer()
+
+                    Button("Revert") { revertToPlain() }
+                        .buttonStyle(ToolbarButtonStyle(backgroundColor: Color.red.opacity(0.15), foregroundColor: .red))
                 }
+
+                // Copy — always visible
+                Button(action: copyText) {
+                    Text(showCopied ? "✓" : "Copy").foregroundStyle(.white).frame(minWidth: 44)
+                }
+                .buttonStyle(ToolbarButtonStyle(backgroundColor: showCopied ? .gray : AppColors.accent))
             }
-            .padding(12)
-            .background(Color(NSColor.controlBackgroundColor))
-            
-            Divider()
-            
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(AppColors.toolbarBackground)
+
+            Divider().foregroundStyle(AppColors.divider)
+
             // Editor
-            MacEditorView(text: $text, editor: $editor, onTextChange: pushToHistory)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.textBackgroundColor))
-            
-            Divider()
-            
-            // Footer Input
+            MacEditorView(
+                text: $text,
+                editor: $editor,
+                onTextChange: pushToHistory,
+                onCursorChange: { cursorRange = $0 }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppColors.editorBackground)
+
+            // Status bar
+            StatusBarView(text: text, cursorRange: cursorRange)
+
+            // Footer input
             HStack {
-                Text("Footer:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text("Footer:").font(.caption).foregroundStyle(AppColors.textSecondary)
                 TextField("Custom Footer", text: $footer)
                     .textFieldStyle(.roundedBorder)
                     .font(.caption)
             }
             .padding(8)
-            .background(Color.gray.opacity(0.05))
+            .background(AppColors.toolbarBackground)
         }
     }
     
@@ -251,61 +263,23 @@ struct SocialMediaFormatterView: View {
         }
     }
     
-    // MARK: - Transformers
-    
-    private func toBold(_ input: String) -> String {
-        let normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        let bold =   "𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗"
-        // Vietnamese map (simplified)
-        let vietMap: [Character: String] = ["đ": "𝗱̛", "Đ": "𝗗̛"]
-        
-        return mapChars(input, from: normal, to: bold, extra: vietMap)
+    // MARK: - Convert Mode Actions
+
+    private func convertMarkdownToUnicode() {
+        pushToHistory(text)
+        text = UnicodeTextFormatter.markdownToUnicode(text)
     }
-    
-    private func toItalic(_ input: String) -> String {
-        let normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        let italic = "𝑎𝑏𝑐𝑑𝑒𝑓𝑔ℎ𝑖𝑗𝑘𝑙𝑚𝑛𝑜𝑝𝑞𝑟𝑠𝑡𝑢𝑣𝑤𝑥𝑦𝑧𝐴𝐵𝐶𝐷𝐸𝐹𝐺𝐻𝐼𝐽𝐾𝐿𝑀𝑁𝑂𝑃𝑄𝑅𝑆𝑇𝑈𝑉𝑊𝑋𝑌𝑍"
-        let vietMap: [Character: String] = ["đ": "𝘥̛", "Đ": "𝘋̛"]
-        return mapChars(input, from: normal, to: italic, extra: vietMap)
+
+    private func convertTableToASCII() {
+        pushToHistory(text)
+        text = UnicodeTextFormatter.markdownTableToASCII(text)
     }
-    
-    private func mapChars(_ input: String, from: String, to: String, extra: [Character: String] = [:]) -> String {
-        let fromArray = Array(from)
-        let toArray = Array(to)
-        var result = ""
-        
-        for char in input {
-            if let mapped = extra[char] {
-                result += mapped
-            } else if let index = fromArray.firstIndex(of: char) {
-                result.append(toArray[index])
-            } else {
-                result.append(char)
-            }
-        }
-        return result
+
+    private func revertToPlain() {
+        pushToHistory(text)
+        text = UnicodeTextFormatter.revertToPlain(text)
     }
-    
-    private func runAIAction(_ action: @escaping (String) async throws -> String) {
-        guard !text.isEmpty else { return }
-        showAIMenu = false
-        isProcessingAI = true
-        
-        Task {
-            do {
-                let result = try await action(text)
-                await MainActor.run {
-                    pushToHistory(result)
-                    text = result
-                    isProcessingAI = false
-                }
-            } catch {
-                await MainActor.run {
-                    isProcessingAI = false
-                }
-            }
-        }
-    }
+
 }
 
 // MARK: - MacEditorView
@@ -314,7 +288,8 @@ struct MacEditorView: NSViewRepresentable {
     @Binding var editor: NSTextView?
     var font: NSFont = .systemFont(ofSize: 14)
     var onTextChange: (String) -> Void
-    
+    var onCursorChange: ((NSRange) -> Void)? = nil
+
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
@@ -360,6 +335,11 @@ struct MacEditorView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             parent.onTextChange(textView.string)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.onCursorChange?(textView.selectedRange())
         }
     }
 }
