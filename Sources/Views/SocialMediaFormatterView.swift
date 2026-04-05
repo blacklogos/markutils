@@ -231,9 +231,35 @@ struct SocialMediaFormatterView: View {
     }
     
     private func moveLine(direction: Int) {
-        // Simplified move line logic
-        // This is complex to implement perfectly with NSTextView without more boilerplate
-        // For now, let's skip or implement basic swap if possible
+        guard let editor else { return }
+        let nsText = editor.string as NSString
+        let cursorPos = editor.selectedRange().location
+        guard cursorPos <= nsText.length else { return }
+
+        // Find range of the current line
+        let currentLineRange = nsText.lineRange(for: NSRange(location: cursorPos, length: 0))
+
+        if direction < 0 {
+            // Move up: need a line above
+            guard currentLineRange.location > 0 else { return }
+            let prevLineRange = nsText.lineRange(for: NSRange(location: currentLineRange.location - 1, length: 0))
+            let currentLine = nsText.substring(with: currentLineRange)
+            let prevLine = nsText.substring(with: prevLineRange)
+            let combinedRange = NSRange(location: prevLineRange.location, length: prevLineRange.length + currentLineRange.length)
+            editor.insertText(currentLine + prevLine, replacementRange: combinedRange)
+            editor.setSelectedRange(NSRange(location: prevLineRange.location, length: 0))
+        } else {
+            // Move down: need a line below
+            let nextStart = NSMaxRange(currentLineRange)
+            guard nextStart < nsText.length else { return }
+            let nextLineRange = nsText.lineRange(for: NSRange(location: nextStart, length: 0))
+            let currentLine = nsText.substring(with: currentLineRange)
+            let nextLine = nsText.substring(with: nextLineRange)
+            let combinedRange = NSRange(location: currentLineRange.location, length: currentLineRange.length + nextLineRange.length)
+            editor.insertText(nextLine + currentLine, replacementRange: combinedRange)
+            editor.setSelectedRange(NSRange(location: currentLineRange.location + nextLineRange.length, length: 0))
+        }
+        text = editor.string
     }
     
     private func addSeparator() {

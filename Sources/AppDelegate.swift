@@ -86,8 +86,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func createFloatingPanel() {
         let contentView = ContentView()
         
-        // Inject container if it exists
-        // Inject container if it exists
         let viewWithModel = AnyView(contentView.environment(AssetStore.shared))
         
         let hostingController = NSHostingController(rootView: viewWithModel)
@@ -105,17 +103,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     @objc func togglePanel() {
-        // If event is right click, show menu (handled by statusItem.menu automatically if attached, 
-        // but we want left click to toggle and right click to show menu. 
-        // Standard NSStatusItem behavior is: if menu is set, click shows menu.
-        // To have left-click toggle and right-click menu, we need a custom approach or just use the menu for everything.
-        // For simplicity and standard behavior: Left click toggles, Right click (or Ctrl-click) shows context menu is harder with standard API.
-        // Let's stick to: Click toggles. Right-click isn't standard for status items with custom action.
-        // BUT user asked for: "click close, app still on tray, right click to close (quit)"
-        // So we need a menu that is ONLY shown on right click? 
-        // Actually, standard macOS behavior: Left click = Action, Right click = Menu is not default.
-        // Let's try to detect the event in the action.
-        
+        // Left click toggles the panel; right click shows the context menu.
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp {
             statusItem.menu?.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
@@ -145,13 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func setThemeDark() { UserDefaults.standard.set("Dark", forKey: "appTheme") }
     
     @objc func sendFeedback() {
-        let email = "mtri.vo@gmail.com"
-        let subject = "Clip App Feedback"
-        let body = "Hi there,\n\nI have some feedback for Clip:\n\n"
-        
-        let urlString = "mailto:\(email)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&body=\(body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
-        
-        if let url = URL(string: urlString) {
+        if let url = URL(string: "https://github.com/blacklogos/markutils/issues") {
             NSWorkspace.shared.open(url)
         }
     }

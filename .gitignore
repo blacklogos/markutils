@@ -5,3 +5,6 @@
 samples/
 Clip.app/
 *.dmg
+dmg_staging/
+.claude/
+.agent/

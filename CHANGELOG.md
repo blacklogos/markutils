@@ -4,6 +4,27 @@ All notable changes to Clip are documented here.
 
 ---
 
+## v1.2.0 — 2026-04-06
+
+### New features
+
+**`clip` CLI companion**
+- New `clip` command-line binary: `md2html`, `html2md`, `md2social` subcommands
+- Reads from stdin by default; `--clipboard` / `-c` flag transforms clipboard in-place (no pipes needed)
+- Bundled in the DMG alongside the app — double-click "Install CLI.command" to install
+
+**Package restructure**
+- `ClipCore` library extracted: pure-Foundation transformers (`RichTextTransformer` HTML methods, `TableTransformer`, `UnicodeTextFormatter`) shared between app and CLI
+- `AppKit` extension on `RichTextTransformer` remains in the app target only
+
+### Changes
+- "Send Feedback" menu item now opens GitHub Issues instead of email
+- Removed unused `AIView` and stub `AIService` (AI slide generation was not wired up)
+- Implemented Move Line Up/Down in Text Formatter overflow menu
+- `build_dmg.sh` now builds both `Clip` and `clip` binaries and stages full DMG with install script
+
+---
+
 ## v1.1.0 — 2026-04-05
 
 **[Download Clip-1.1.0.dmg](https://github.com/blacklogos/markutils/releases/download/v1.1.0/Clip-1.1.0.dmg)**
