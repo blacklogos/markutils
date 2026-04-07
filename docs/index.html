@@ -1,484 +1,337 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clip — macOS Menu Bar Utility for Content Creators</title>
+  <title>Clip — Your content toolkit, in the menu bar.</title>
   <link rel="canonical" href="https://clip.cc4.marketing">
-  <meta name="description" content="A lightweight macOS menu bar utility for content creators. Transform text, manage assets, format for social media — all from your menu bar.">
-  <meta property="og:title" content="Clip — macOS Menu Bar Utility">
-  <meta property="og:description" content="Transform text, manage assets, format for social media — all from your menu bar.">
+  <meta name="description" content="A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media — with zero dependencies.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Clip — Your content toolkit, in the menu bar.">
+  <meta property="og:description" content="A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://clip.cc4.marketing">
   <meta property="og:image" content="https://raw.githubusercontent.com/blacklogos/markutils/main/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+
+  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Clip — macOS Menu Bar Utility">
-  <meta name="twitter:description" content="Transform text, manage assets, format for social media — all from your menu bar.">
+  <meta name="twitter:title" content="Clip — Your content toolkit, in the menu bar.">
+  <meta name="twitter:description" content="A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media.">
   <meta name="twitter:image" content="https://raw.githubusercontent.com/blacklogos/markutils/main/og-image.png">
+
   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/blacklogos/markutils/main/Resources/clip-icon-1024.png">
+
+  <!-- Fonts: Bricolage Grotesque (display) + Source Sans 3 (body) + JetBrains Mono (code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Bricolage Grotesque', 'sans-serif'],
+            body: ['Source Sans 3', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: 'var(--surface)',
+            border: 'var(--border)',
+            muted: 'var(--muted)',
+            accent: {
+              DEFAULT: 'var(--accent)',
+              hover: 'var(--accent-hover)',
+            },
+          },
+        },
+      },
+    }
+  </script>
+
   <style>
+    /* Palette: Warm Charcoal */
     :root {
-      --bg: #faf8f5;
-      --bg-alt: #f3efe9;
-      --text: #2c2520;
-      --text-secondary: #6b5e52;
-      --accent: #c87941;
-      --accent-light: #e8a76830;
-      --border: #e0d6cc;
-      --code-bg: #f0ebe4;
-      --card-bg: #ffffff;
-      --shadow: 0 2px 12px rgba(0,0,0,0.06);
-      --radius: 12px;
+      --bg: #1a1a1a;
+      --surface: #242424;
+      --border: #333333;
+      --text: #e0e0e0;
+      --muted: #888888;
+      --accent: #fbbf24;
+      --accent-hover: #fcd34d;
+      --accent-rgb: 251, 191, 36;
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1a1612;
-        --bg-alt: #231e19;
-        --text: #e8e0d8;
-        --text-secondary: #9b8e80;
-        --accent: #d4915a;
-        --accent-light: #d4915a20;
-        --border: #3a322a;
-        --code-bg: #2a241e;
-        --card-bg: #231e19;
-        --shadow: 0 2px 12px rgba(0,0,0,0.3);
+    /* Light mode: Warm Paper */
+    @media (prefers-color-scheme: light) {
+      :root.auto {
+        --bg: #faf8f5;
+        --surface: #f0ece6;
+        --border: #d6d0c8;
+        --text: #2c2825;
+        --muted: #8a837a;
+        --accent: #c05621;
+        --accent-hover: #dd6b20;
+        --accent-rgb: 192, 86, 33;
       }
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-      background: var(--bg);
+      background-color: var(--bg);
       color: var(--text);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
+      font-family: 'Source Sans 3', sans-serif;
     }
 
-    /* Hero */
-    .hero {
-      text-align: center;
-      padding: 80px 24px 60px;
-      max-width: 720px;
-      margin: 0 auto;
+    /* Hero entrance animation */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .hero-icon {
-      width: 128px;
-      height: 128px;
-      border-radius: 28px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow);
+    .hero-animate > * {
+      opacity: 0;
+      animation: fadeUp 0.6s ease-out forwards;
     }
 
-    .hero h1 {
-      font-size: 48px;
-      font-weight: 700;
-      letter-spacing: -1px;
-      margin-bottom: 8px;
+    .hero-animate > *:nth-child(1) { animation-delay: 0s; }
+    .hero-animate > *:nth-child(2) { animation-delay: 0.1s; }
+    .hero-animate > *:nth-child(3) { animation-delay: 0.15s; }
+    .hero-animate > *:nth-child(4) { animation-delay: 0.25s; }
+    .hero-animate > *:nth-child(5) { animation-delay: 0.35s; }
+
+    /* Terminal glow */
+    .terminal-glow {
+      box-shadow:
+        0 0 0 1px var(--border),
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 80px -20px rgba(var(--accent-rgb), 0.12);
     }
 
-    .hero .tagline {
-      font-size: 20px;
-      color: var(--text-secondary);
-      margin-bottom: 32px;
+    /* Copy button */
+    .copy-btn { transition: opacity 0.15s ease; }
+    .copy-btn:hover { opacity: 1 !important; }
+
+    /* Button hover lift */
+    .btn-lift {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn-lift:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
     }
 
-    .hero .badges {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 32px;
-    }
+    /* Feature card hover */
+    .feature-card { transition: border-color 0.2s ease; }
+    .feature-card:hover { border-color: var(--accent); }
 
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      font-size: 13px;
-      font-weight: 500;
-      border-radius: 20px;
-      background: var(--accent-light);
-      color: var(--accent);
-      border: 1px solid var(--accent);
-    }
-
-    .cta-group {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 28px;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-
-    .btn-secondary {
-      background: var(--bg-alt);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .btn-secondary:hover { background: var(--border); }
-
-    /* Sections */
-    section {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 60px 24px;
-    }
-
-    section h2 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      letter-spacing: -0.5px;
-    }
-
-    section .subtitle {
-      font-size: 17px;
-      color: var(--text-secondary);
-      margin-bottom: 40px;
-    }
-
-    /* Feature grid */
-    .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-    }
-
-    .feature-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .feature-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow);
-    }
-
-    .feature-card .icon {
-      font-size: 28px;
-      margin-bottom: 12px;
-    }
-
-    .feature-card h3 {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    .feature-card p {
-      font-size: 14px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
-    /* Getting started */
-    .steps {
-      counter-reset: step;
-    }
-
-    .step {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 32px;
-      align-items: flex-start;
-    }
-
-    .step-num {
-      counter-increment: step;
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 16px;
-    }
-
-    .step-num::before { content: counter(step); }
-
-    .step-content h3 {
-      font-size: 17px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .step-content p {
-      font-size: 15px;
-      color: var(--text-secondary);
-    }
-
-    code, .code-block {
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-      background: var(--code-bg);
-      border-radius: 6px;
-    }
-
-    code {
-      padding: 2px 6px;
-      font-size: 13px;
-    }
-
-    .code-block {
-      display: block;
-      padding: 16px 20px;
-      margin-top: 8px;
-      font-size: 13px;
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      white-space: pre;
-      line-height: 1.5;
-    }
-
-    /* CLI section */
-    .cli-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    @media (max-width: 640px) {
-      .cli-grid { grid-template-columns: 1fr; }
-    }
-
-    .cli-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-    }
-
-    .cli-card h3 {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-
-    /* Footer */
-    footer {
-      text-align: center;
-      padding: 40px 24px;
-      border-top: 1px solid var(--border);
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-
-    footer a { color: var(--accent); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-
-    /* Divider */
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 0;
+    /* App icon glow */
+    .icon-glow {
+      filter: drop-shadow(0 0 40px rgba(var(--accent-rgb), 0.25));
     }
   </style>
 </head>
-<body>
 
-  <!-- Hero -->
-  <div class="hero">
-    <img src="https://raw.githubusercontent.com/blacklogos/markutils/main/Resources/clip-icon-1024.png" alt="Clip icon" class="hero-icon">
-    <h1>Clip</h1>
-    <p class="tagline">A lightweight macOS menu bar utility for content creators.</p>
-    <div class="badges">
-      <span class="badge">macOS 14+</span>
-      <span class="badge">Swift 5.9</span>
-      <span class="badge">No dependencies</span>
-      <span class="badge">v1.3.0</span>
+<body class="min-h-screen antialiased">
+
+  <!-- ============================================ -->
+  <!-- HERO                                         -->
+  <!-- ============================================ -->
+  <section class="min-h-[80vh] flex flex-col items-center justify-center text-center px-6 py-20">
+    <div class="max-w-3xl mx-auto hero-animate">
+
+      <!-- App icon -->
+      <img src="https://raw.githubusercontent.com/blacklogos/markutils/main/Resources/clip-icon-1024.png"
+           alt="Clip app icon"
+           class="icon-glow w-28 h-28 rounded-[22px] mx-auto mb-8">
+
+      <!-- Product name -->
+      <h1 class="font-display text-5xl sm:text-6xl md:text-7xl font-800 tracking-tight mb-4">
+        Clip
+      </h1>
+
+      <!-- Tagline -->
+      <p class="text-xl sm:text-2xl md:text-3xl font-body font-500 mb-6" style="color: var(--muted);">
+        Your content toolkit, in the menu bar.
+      </p>
+
+      <!-- Expansion -->
+      <p class="text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed" style="color: var(--muted);">
+        A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media — with zero dependencies.
+      </p>
+
+      <!-- CTAs -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="https://github.com/blacklogos/markutils/releases/latest"
+           class="btn-lift inline-flex items-center gap-2 px-6 py-3 rounded-lg font-body font-600 text-black"
+           style="background-color: var(--accent);">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for Mac
+        </a>
+        <a href="https://github.com/blacklogos/markutils"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-body font-500 border transition-colors hover:border-[var(--accent)]"
+           style="border-color: var(--border); color: var(--muted);">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+
     </div>
-    <div class="cta-group">
-      <a href="https://github.com/blacklogos/markutils/releases/latest" class="btn btn-primary">
-        Download DMG
-      </a>
-      <a href="https://github.com/blacklogos/markutils" class="btn btn-secondary">
-        View on GitHub
-      </a>
-    </div>
-  </div>
+  </section>
 
-  <hr class="divider">
+  <!-- ============================================ -->
+  <!-- DEMO / TERMINAL                              -->
+  <!-- ============================================ -->
+  <section class="px-6 pb-20">
+    <div class="max-w-2xl mx-auto">
+      <div class="terminal-glow rounded-xl overflow-hidden" style="background: var(--surface);">
 
-  <!-- Features -->
-  <section>
-    <h2>Everything you need, one click away</h2>
-    <p class="subtitle">Four purpose-built tabs live in your menu bar. No Dock icon, always accessible.</p>
+        <!-- Terminal header -->
+        <div class="flex items-center gap-2 px-4 py-3 border-b" style="border-color: var(--border);">
+          <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+          <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+          <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+          <span class="ml-2 text-xs font-mono" style="color: var(--muted);">clip</span>
+        </div>
 
-    <div class="features">
-      <div class="feature-card">
-        <div class="icon">&#x1F5C2;</div>
-        <h3>Asset Vault</h3>
-        <p>Drag images and text from anywhere. Organize into folders. Drag back out to Keynote, Pages, or any app. Persistent JSON storage.</p>
-      </div>
+        <!-- Terminal body -->
+        <div class="relative p-5 font-mono text-sm leading-7 overflow-x-auto">
+          <button onclick="copyTerminal(this)"
+                  class="copy-btn absolute top-3 right-3 p-1.5 rounded opacity-40 hover:opacity-100"
+                  style="color: var(--muted);"
+                  title="Copy">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+            </svg>
+          </button>
+          <pre class="whitespace-pre"><code><span style="color: var(--muted);"># Transform Markdown to HTML</span>
+<span style="color: var(--accent);">$</span> echo "# Hello **world**" | clip md2html
+&lt;h1&gt;Hello &lt;strong&gt;world&lt;/strong&gt;&lt;/h1&gt;
 
-      <div class="feature-card">
-        <div class="icon">&#x21C4;</div>
-        <h3>Smart Transform</h3>
-        <p>Paste content &mdash; Clip auto-detects Markdown, HTML, CSV, TSV, or plain text and offers the right conversion. Side-by-side split view for comparison.</p>
-      </div>
+<span style="color: var(--muted);"># Format for social media</span>
+<span style="color: var(--accent);">$</span> echo "**bold** and _italic_" | clip md2social
+<span style="color: var(--accent);">&#x1D41B;&#x1D428;&#x1D425;&#x1D41D;</span> and <span style="color: var(--accent);">&#x1D48A;&#x1D495;&#x1D48E;&#x1D490;&#x1D48A;&#x1D48C;</span>
 
-      <div class="feature-card">
-        <div class="icon">&#x1D400;</div>
-        <h3>Text Formatter</h3>
-        <p>Unicode styling for social media: <strong>bold</strong>, <em>italic</em>, monospace, script, small caps. Convert full Markdown docs to Unicode-styled plain text.</p>
-      </div>
+<span style="color: var(--muted);"># Back up your vault</span>
+<span style="color: var(--accent);">$</span> clip export --file ~/Dropbox/clip-backup.json
+Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
+        </div>
 
-      <div class="feature-card">
-        <div class="icon">&#x1F4C4;</div>
-        <h3>Snippets</h3>
-        <p>Store reusable text snippets with titles. One click to copy. Built-in templates for common patterns.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">&#x1F4BE;</div>
-        <h3>Export / Import</h3>
-        <p>Back up your entire vault as JSON. Restore on any Mac. Works from the menu bar or CLI. Schedule automated backups with cron.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">&#x1F504;</div>
-        <h3>Auto-Update</h3>
-        <p>Clip checks GitHub Releases on launch. Get notified when a new version is available and download with one click.</p>
       </div>
     </div>
   </section>
 
-  <hr class="divider">
+  <!-- ============================================ -->
+  <!-- FEATURES                                     -->
+  <!-- ============================================ -->
+  <section class="px-6 py-20">
+    <div class="max-w-4xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-  <!-- Getting Started -->
-  <section>
-    <h2>Getting Started</h2>
-    <p class="subtitle">Up and running in under a minute.</p>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-content">
-          <h3>Download &amp; install</h3>
-          <p>Download <strong>Clip-1.3.0.dmg</strong> from the <a href="https://github.com/blacklogos/markutils/releases/latest" style="color: var(--accent)">latest release</a>. Open the DMG, drag <strong>Clip.app</strong> to <code>/Applications</code>.</p>
+        <!-- Feature 1 -->
+        <div class="feature-card rounded-xl p-6 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="text-3xl mb-3">&#x1F5C2;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Asset Vault</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Drag images and text in, organise into folders, drag back out to any app. Persists across launches.</p>
         </div>
-      </div>
 
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-content">
-          <h3>Bypass Gatekeeper</h3>
-          <p>The app isn't notarized yet. Run this once in Terminal:</p>
-          <code class="code-block">xattr -rd com.apple.quarantine /Applications/Clip.app</code>
+        <!-- Feature 2 -->
+        <div class="feature-card rounded-xl p-6 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="text-3xl mb-3">&#x21C4;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Smart Transform</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Auto-detects Markdown, HTML, CSV, or TSV and offers the right conversion. Split view for side-by-side comparison.</p>
         </div>
-      </div>
 
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-content">
-          <h3>Launch</h3>
-          <p>Double-click Clip.app. The paperclip icon appears in your menu bar. Left-click to open the panel, right-click for the menu.</p>
+        <!-- Feature 3 -->
+        <div class="feature-card rounded-xl p-6 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="text-3xl mb-3">&#x1D400;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Text Formatter</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Unicode styling for social media: bold, italic, monospace, script, small caps. Full Markdown-to-Unicode conversion.</p>
         </div>
-      </div>
 
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-content">
-          <h3>Install the CLI (optional)</h3>
-          <p>Double-click <strong>"Install CLI.command"</strong> in the DMG to install the <code>clip</code> terminal tool to <code>/usr/local/bin</code>.</p>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-content">
-          <h3>Quick access</h3>
-          <p>Use <kbd>Cmd+Shift+C</kbd> from any app, or shake your mouse vigorously to reveal the panel instantly.</p>
-        </div>
       </div>
     </div>
   </section>
 
-  <hr class="divider">
+  <!-- ============================================ -->
+  <!-- INSTALL / GET STARTED                        -->
+  <!-- ============================================ -->
+  <section class="px-6 py-20">
+    <div class="max-w-2xl mx-auto text-center">
+      <h2 class="font-display text-3xl sm:text-4xl font-700 mb-8">Get started</h2>
 
-  <!-- CLI -->
-  <section>
-    <h2><code>clip</code> CLI</h2>
-    <p class="subtitle">The same transformers available in the app, usable from your terminal.</p>
+      <div class="rounded-xl overflow-hidden border text-left" style="background: var(--surface); border-color: var(--border);">
+        <div class="relative p-5 font-mono text-sm leading-7">
+          <button onclick="copyTerminal(this)"
+                  class="copy-btn absolute top-3 right-3 p-1.5 rounded opacity-40"
+                  style="color: var(--muted);"
+                  title="Copy">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+            </svg>
+          </button>
+          <pre class="whitespace-pre"><code><span style="color: var(--muted);"># 1. Download &amp; install</span>
+<span style="color: var(--accent);">$</span> open https://github.com/blacklogos/markutils/releases/latest
 
-    <div class="cli-grid">
-      <div class="cli-card">
-        <h3>Transform</h3>
-        <code class="code-block">echo "# Hello **world**" | clip md2html
-echo "&lt;h1&gt;Hello&lt;/h1&gt;" | clip html2md
-echo "**bold**" | clip md2social
+<span style="color: var(--muted);"># 2. Remove quarantine (app is not notarized)</span>
+<span style="color: var(--accent);">$</span> xattr -rd com.apple.quarantine /Applications/Clip.app
 
-# Clipboard mode — no pipes needed
-clip md2html --clipboard</code>
+<span style="color: var(--muted);"># 3. Launch — look for the paperclip in your menu bar</span>
+<span style="color: var(--accent);">$</span> open /Applications/Clip.app
+
+<span style="color: var(--muted);"># Quick access: Cmd+Shift+C or shake your mouse</span></code></pre>
+        </div>
       </div>
 
-      <div class="cli-card">
-        <h3>Backup &amp; Restore</h3>
-        <code class="code-block"># Export vault
-clip export > ~/backup.json
-clip export --file ~/Dropbox/clip.json
-
-# Import vault
-clip import < ~/backup.json
-clip import --file ~/Dropbox/clip.json
-
-# Automated daily backup
-0 2 * * * clip export --file ~/backup.json</code>
-      </div>
+      <p class="text-sm mt-4" style="color: var(--muted);">
+        Or build from source: <code class="font-mono px-1.5 py-0.5 rounded" style="background: var(--surface);">git clone &amp;&amp; swift run</code>
+      </p>
     </div>
   </section>
 
-  <hr class="divider">
-
-  <!-- Build from source -->
-  <section>
-    <h2>Build from source</h2>
-    <p class="subtitle">Requires Xcode Command Line Tools or full Xcode.</p>
-
-    <code class="code-block">git clone https://github.com/blacklogos/markutils.git
-cd markutils
-swift run                    # build &amp; launch the app
-bash scripts/install_cli.sh  # install CLI to /usr/local/bin
-bash scripts/build_dmg.sh    # build distributable DMG</code>
-  </section>
-
-  <footer>
-    <p>
-      Made by <a href="https://github.com/blacklogos">blacklogos</a> &middot;
-      <a href="https://github.com/blacklogos/markutils">GitHub</a> &middot;
-      <a href="https://github.com/blacklogos/markutils/issues">Feedback</a> &middot;
-      MIT License
-    </p>
+  <!-- ============================================ -->
+  <!-- FOOTER                                       -->
+  <!-- ============================================ -->
+  <footer class="px-6 py-12 text-center">
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-2 text-sm" style="color: var(--muted);">
+      <span>Built by <a href="https://github.com/blacklogos" class="underline hover:no-underline" style="color: var(--text);">blacklogos</a></span>
+      <span class="hidden sm:inline">&middot;</span>
+      <span>MIT License</span>
+      <span class="hidden sm:inline">&middot;</span>
+      <a href="https://github.com/blacklogos/markutils" class="underline hover:no-underline" style="color: var(--text);">Source</a>
+    </div>
+    <p class="text-xs mt-4" style="color: var(--border);">macOS 14+ &middot; Swift 5.9 &middot; v1.3.0</p>
   </footer>
+
+  <!-- ============================================ -->
+  <!-- SCRIPTS                                      -->
+  <!-- ============================================ -->
+  <script>
+    function copyTerminal(btn) {
+      const code = btn.closest('.relative').querySelector('code');
+      const text = code.innerText.replace(/^\$ /gm, '').replace(/^#.*$/gm, '').replace(/^\n+/gm, '').trim();
+      navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>';
+        setTimeout(() => {
+          btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+        }, 2000);
+      });
+    }
+
+    if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+      document.documentElement.classList.add('auto');
+    }
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+      document.documentElement.classList.toggle('auto', e.matches);
+    });
+  </script>
 
 </body>
 </html>
