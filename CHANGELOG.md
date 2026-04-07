@@ -4,6 +4,18 @@ All notable changes to Clip are documented here.
 
 ---
 
+## v1.2.1 — 2026-04-07
+
+### Bug fixes
+
+- **Fixed DMG producing a broken Clip.app** — the `Clip` (app) and `clip` (CLI) product names collided on macOS's case-insensitive filesystem, causing the CLI binary to overwrite the app binary. Renamed CLI product to `clip-tool` in Package.swift; end-user `clip` command name is unchanged.
+- Removed dead `AIService` test stubs that referenced an unimplemented class, fixing `swift test` failures.
+
+### Changes
+- Updated `build_dmg.sh`, `install_cli.sh`, README, and docs to reflect the `clip-tool` product rename.
+
+---
+
 ## v1.2.0 — 2026-04-06
 
 ### New features

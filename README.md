@@ -2,7 +2,7 @@
 
 A lightweight macOS menu bar utility for content creators. Lives in the menu bar — no Dock icon, always one click away.
 
-**Version 1.2.0** · macOS 14+ · Swift 5.9 · No dependencies
+**Version 1.2.1** · macOS 14+ · Swift 5.9 · No dependencies
 
 ---
 
@@ -59,7 +59,7 @@ Store reusable text snippets with titles. Click to copy.
 
 ### Option A — Download DMG (recommended)
 
-1. Download **Clip-1.2.0.dmg**
+1. Download **Clip-1.2.1.dmg**
 2. Open the DMG — drag **Clip.app** to `/Applications`
 3. Double-click **"Install CLI.command"** in the same DMG to install the `clip` terminal tool
 4. Enter your password when prompted (needed to write to `/usr/local/bin`)
@@ -183,7 +183,7 @@ ClipCore  (Foundation only)
 
 ```bash
 swift build                          # compile all targets
-swift build --product clip           # CLI only
+swift build --product clip-tool      # CLI only
 swift run                            # run the app
 swift test                           # unit tests (requires full Xcode)
 bash scripts/install_cli.sh          # install CLI to /usr/local/bin

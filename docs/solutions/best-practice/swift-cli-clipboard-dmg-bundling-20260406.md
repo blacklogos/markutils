@@ -73,7 +73,7 @@ Exit codes: 0 = success, 1 = unknown subcommand. Progress/error messages go to s
 
 ### 2. DMG bundling (scripts/build_dmg.sh)
 
-Added a `swift build -c release --product clip` step before DMG staging. The DMG folder contains:
+Added a `swift build -c release --product clip-tool` step before DMG staging. The CLI product is named `clip-tool` in Package.swift to avoid a case-insensitive filename collision with the `Clip` app binary on macOS (APFS default). The DMG folder contains:
 
 ```
 Clip.app
@@ -95,8 +95,8 @@ if [ -f "${BUNDLED_BINARY}" ] && [ -x "${BUNDLED_BINARY}" ]; then
     BUILT_PATH="${BUNDLED_BINARY}"
 else
     echo "Building ${BINARY_NAME} (release)..."
-    swift build -c release --product "${BINARY_NAME}"
-    BUILT_PATH=".build/release/${BINARY_NAME}"
+    swift build -c release --product "clip-tool"
+    BUILT_PATH=".build/release/clip-tool"
 fi
 
 sudo cp "${BUILT_PATH}" "${INSTALL_DIR}/${BINARY_NAME}"

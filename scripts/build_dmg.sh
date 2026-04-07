@@ -3,7 +3,7 @@
 # Configuration
 APP_NAME="Clip"
 BUILD_DIR=".build/release"
-VERSION="1.2.0"
+VERSION="1.2.1"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 APP_BUNDLE="${APP_NAME}.app"
 DMG_STAGING="dmg_staging"
@@ -16,7 +16,7 @@ echo "🚀 Starting build process for ${APP_NAME}..."
 # 1. Build the release binaries (app + CLI)
 echo "🛠️  Building Swift package (Clip + clip CLI)..."
 swift build -c release --product "${APP_NAME}"
-swift build -c release --product "clip"
+swift build -c release --product "clip-tool"
 
 if [ $? -ne 0 ]; then
     echo "❌ Build failed."
@@ -48,7 +48,7 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.2.0</string>
+    <string>1.2.1</string>
     <key>CFBundleVersion</key>
     <string>3</string>
     <key>LSMinimumSystemVersion</key>
@@ -68,7 +68,7 @@ echo "📁 Staging DMG contents..."
 rm -rf "${DMG_STAGING}"
 mkdir -p "${DMG_STAGING}"
 cp -r "${APP_BUNDLE}" "${DMG_STAGING}/"
-cp "${BUILD_DIR}/clip" "${DMG_STAGING}/clip"
+cp "${BUILD_DIR}/clip-tool" "${DMG_STAGING}/clip"
 cp "scripts/install_cli.sh" "${DMG_STAGING}/Install CLI.command"
 chmod +x "${DMG_STAGING}/Install CLI.command"
 

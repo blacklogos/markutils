@@ -15,8 +15,8 @@ if [ -f "${BUNDLED_BINARY}" ] && [ -x "${BUNDLED_BINARY}" ]; then
 else
     echo "Building ${BINARY_NAME} (release)..."
     # Must be run from the repo root when building from source
-    swift build -c release --product "${BINARY_NAME}"
-    BUILT_PATH=".build/release/${BINARY_NAME}"
+    swift build -c release --product "clip-tool"
+    BUILT_PATH=".build/release/clip-tool"
 fi
 
 if [ ! -f "${BUILT_PATH}" ]; then

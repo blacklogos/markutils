@@ -8,7 +8,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "Clip", targets: ["Clip"]),
-        .executable(name: "clip", targets: ["ClipCLI"]),
+        .executable(name: "clip-tool", targets: ["ClipCLI"]),
         .library(name: "ClipCore", targets: ["ClipCore"]),
     ],
     targets: [

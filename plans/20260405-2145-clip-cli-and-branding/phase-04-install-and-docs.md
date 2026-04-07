@@ -142,7 +142,7 @@ Current effort estimate if/when pursued: ~2 hours (formula, test, tap repo setup
 - [ ] `chmod +x scripts/install_cli.sh`
 - [ ] End-to-end install test on a clean PATH
 - [ ] Verify `clip --help` works post-install
-- [ ] Consider: add `swift build --product clip` to `verify_release.sh`
+- [ ] Consider: add `swift build --product clip-tool` to `verify_release.sh`
 
 ---
 
