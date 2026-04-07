@@ -2,7 +2,7 @@
 
 A lightweight macOS menu bar utility for content creators. Lives in the menu bar — no Dock icon, always one click away.
 
-**Version 1.2.1** · macOS 14+ · Swift 5.9 · No dependencies
+**Version 1.3.0** · macOS 14+ · Swift 5.9 · No dependencies
 
 ---
 
@@ -20,7 +20,7 @@ Drag images and text from anywhere into the vault. Organise into folders. Drag a
 - Right-click context menu (rename, delete, move)
 
 ### ⇄ Transform
-Paste content — Clip auto-detects the type and offers the right actions.
+Paste content — Clip auto-detects the type and offers the right actions. Toggle between **stacked** and **side-by-side** layout with the split view button.
 
 | Detected type | Actions |
 |---------------|---------|
@@ -53,13 +53,23 @@ Two modes, toggled by the **Format / Convert** segmented picker:
 ### 📄 Snippets
 Store reusable text snippets with titles. Click to copy.
 
+### 💾 Export / Import
+Back up your entire vault as a JSON file and restore it on any Mac.
+
+- **GUI**: Menu bar → Export Vault… / Import Vault…
+- **CLI**: `clip export > backup.json` / `clip import < backup.json`
+- Schedule automated backups with cron: `0 2 * * * clip export --file ~/Dropbox/clip-backup-$(date +\%Y\%m\%d).json`
+
+### 🔄 Auto-Update
+Clip checks GitHub Releases on launch and notifies you when a new version is available. You can also check manually via the menu bar → "Check for Updates…".
+
 ---
 
 ## Installation
 
 ### Option A — Download DMG (recommended)
 
-1. Download **Clip-1.2.1.dmg**
+1. Download **Clip-1.3.0.dmg**
 2. Open the DMG — drag **Clip.app** to `/Applications`
 3. Double-click **"Install CLI.command"** in the same DMG to install the `clip` terminal tool
 4. Enter your password when prompted (needed to write to `/usr/local/bin`)
@@ -116,6 +126,14 @@ clip md2social --clipboard
 clip md2html -c
 ```
 
+```bash
+# Export / Import vault
+clip export > ~/backup.json
+clip import < ~/backup.json
+clip export --file ~/Dropbox/clip-backup.json
+clip import --file ~/Dropbox/clip-backup.json
+```
+
 See [docs/clip-cli.md](docs/clip-cli.md) for the full guide.
 
 ---
@@ -145,7 +163,8 @@ Sources/
 │   └── Snippet.swift              # Codable snippet model
 ├── Services/
 │   ├── ClipboardMonitor.swift     # NSPasteboard change monitoring
-│   └── MouseShakeDetector.swift   # Cursor velocity-based shake detection
+│   ├── MouseShakeDetector.swift   # Cursor velocity-based shake detection
+│   └── UpdateChecker.swift        # GitHub Releases auto-update checker
 ├── Utilities/
 │   └── RichTextTransformer.swift  # AppKit extension: markdownToRichText, richTextToMarkdown
 ├── Views/
@@ -162,7 +181,7 @@ Sources/
 │   ├── TableTransformer.swift     # TSV/CSV ↔ Markdown table
 │   └── UnicodeTextFormatter.swift # Unicode style maps, MD→Unicode, table→ASCII
 └── ClipCLI/
-    └── main.swift                 # `clip` CLI: md2html, html2md, md2social subcommands
+    └── main.swift                 # `clip` CLI: md2html, html2md, md2social, export, import
 ```
 
 **Target graph:**

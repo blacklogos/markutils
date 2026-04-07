@@ -83,3 +83,4 @@ When planning a new SPM library extraction from an existing executable-only pack
 1. Decide up-front: use `exclude:` (lower churn) or restructure to subdirectory (cleaner long-term).
 2. Add subdirs to `exclude:` before adding the new `target` entry — prevents intermediate build failures.
 3. Verify with `swift build` after each Package.swift change.
+4. Ensure executable product names are unique under case-insensitive comparison — see [SPM Product Name Collision on APFS](spm-product-name-collision-case-insensitive-apfs-20260407.md).

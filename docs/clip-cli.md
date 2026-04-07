@@ -121,3 +121,9 @@ clip md2html --help
 clip html2md --help
 clip md2social --help
 ```
+
+---
+
+## Technical notes
+
+The CLI product is named `clip-tool` internally in `Package.swift` to avoid a [case-insensitive filesystem collision](solutions/build-errors/spm-product-name-collision-case-insensitive-apfs-20260407.md) with the `Clip` app binary. It installs as `clip` for end users.

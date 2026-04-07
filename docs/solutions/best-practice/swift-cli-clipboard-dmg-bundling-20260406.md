@@ -111,3 +111,4 @@ The `sudo cp` is intentional — `/usr/local/bin` requires root on macOS without
 - Always send progress/status to stderr, output to stdout — preserves pipe composability.
 - Bundle the pre-built binary in the DMG so the install script never requires Xcode on the end-user machine.
 - Use `SCRIPT_DIR` detection (`"$(cd "$(dirname "$0")" && pwd)"`) so install scripts work regardless of cwd.
+- Ensure CLI and app product names don't collide on case-insensitive filesystems — see [SPM Product Name Collision on APFS](../build-errors/spm-product-name-collision-case-insensitive-apfs-20260407.md).

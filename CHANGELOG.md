@@ -4,6 +4,37 @@ All notable changes to Clip are documented here.
 
 ---
 
+## v1.3.0 — 2026-04-08
+
+### New features
+
+**App Icon**
+- Custom paperclip mascot icon — replaces the generic macOS app icon in Finder, Dock (when visible), and About dialogs
+
+**Split View for Transform tab** (#2)
+- Toggle button switches between stacked (vertical) and side-by-side (horizontal) layout
+- Compare input and output content side by side for easier review
+
+**Auto-Update** (#3)
+- Checks GitHub Releases on launch for newer versions (silent — only shows an alert when an update is found)
+- "Check for Updates…" menu item for manual checks
+- One-click download of the latest DMG from the update alert
+
+**Export/Import Vault** (#4)
+- **GUI**: "Export Vault…" / "Import Vault…" menu items with native file dialogs
+- **CLI**: `clip export` and `clip import` subcommands
+  - Supports stdin/stdout piping and `--file` flag
+  - Validates JSON before importing; vault unchanged on invalid input
+- Pretty-printed JSON output for human-readable backups
+- Import replaces the full vault (with confirmation dialog in GUI)
+
+### Changes
+- `build_dmg.sh` now copies `AppIcon.icns` into the app bundle and sets `CFBundleIconFile` in Info.plist
+- CLI help updated with export/import subcommand documentation
+- Version bumped to 1.3.0
+
+---
+
 ## v1.2.1 — 2026-04-07
 
 ### Bug fixes

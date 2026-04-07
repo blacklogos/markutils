@@ -9,6 +9,7 @@ struct QuickActionsView: View {
     @State private var output = ""
     @State private var outputMode: OutputMode = .text
     @State private var showCopied = false
+    @State private var splitVertical = false  // false = stacked, true = side-by-side
 
     enum OutputMode { case text, htmlPreview }
 
@@ -23,17 +24,32 @@ struct QuickActionsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            inputPane
+            if splitVertical && (!output.isEmpty || outputMode == .htmlPreview) {
+                // Side-by-side layout
+                HStack(spacing: 0) {
+                    inputPane
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    Divider()
+
+                    outputPane
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
                 .frame(maxHeight: .infinity)
+            } else {
+                // Stacked layout (default)
+                inputPane
+                    .frame(maxHeight: .infinity)
+
+                if !output.isEmpty || outputMode == .htmlPreview {
+                    Divider()
+                    outputPane
+                        .frame(maxHeight: .infinity)
+                }
+            }
 
             if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 actionBar
-            }
-
-            if !output.isEmpty || outputMode == .htmlPreview {
-                Divider()
-                outputPane
-                    .frame(maxHeight: .infinity)
             }
 
             StatusBarView(text: input, cursorRange: nil)
@@ -68,6 +84,12 @@ struct QuickActionsView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Paste from clipboard")
+
+                Button(action: { withAnimation { splitVertical.toggle() } }) {
+                    Image(systemName: splitVertical ? "rectangle.split.1x2" : "rectangle.split.2x1")
+                }
+                .buttonStyle(.plain)
+                .help(splitVertical ? "Stack vertically" : "Split side by side")
 
                 Button(action: { input = ""; output = ""; outputMode = .text }) {
                     Image(systemName: "trash")

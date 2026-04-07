@@ -17,22 +17,22 @@ func printUsage() {
       md2html    Markdown → HTML  (stdin → stdout)
       html2md    HTML → Markdown  (stdin → stdout)
       md2social  Markdown → Unicode-styled social text  (stdin → stdout)
+      export     Export asset vault as JSON  (stdout or --file)
+      import     Import asset vault from JSON  (stdin or --file)
 
     OPTIONS:
       -c, --clipboard  Read from clipboard; write result back to clipboard
+      -f, --file PATH  Read/write to file instead of stdin/stdout (export/import)
       -h, --help       Show this help message
 
     EXAMPLES:
       echo "# Hello **world**" | clip md2html
       pbpaste | clip md2social | pbcopy
-      cat page.html | clip html2md
 
-      clip md2html --clipboard          # transforms clipboard in-place
-      clip md2social -c                 # style clipboard text for social media
-
-    NOTES:
-      md2social output uses Unicode SMP characters. Requires a UTF-8 terminal.
-      html2md strips <html>/<head>/<body> wrappers automatically.
+      clip export > ~/backup.json
+      clip import < ~/backup.json
+      clip export --file ~/Dropbox/clip-backup.json
+      clip import --file ~/Dropbox/clip-backup.json
 
     """, stderr)
 }
@@ -81,6 +81,33 @@ func stripHTMLShell(_ html: String) -> String {
     return s.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
+// MARK: - Vault helpers
+
+/// Minimal Codable mirror of Asset for validation (no @Observable dependency in CLI target).
+struct VaultAsset: Codable {
+    let id: UUID
+    let creationDate: Date
+    let type: String
+    let textContent: String?
+    let imageData: Data?
+    let name: String?
+    let children: [VaultAsset]?
+}
+
+func vaultFileURL() -> URL {
+    let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+    return appSupport.appendingPathComponent("Clip/assets.json")
+}
+
+func fileArgument(_ args: [String]) -> String? {
+    for (i, arg) in args.enumerated() {
+        if (arg == "--file" || arg == "-f"), i + 1 < args.count {
+            return args[i + 1]
+        }
+    }
+    return nil
+}
+
 // MARK: - Argument parsing
 
 let args = CommandLine.arguments
@@ -126,6 +153,66 @@ case "md2html", "html2md", "md2social":
     } else {
         print(output, terminator: "")
     }
+
+case "export":
+    let remainingArgs = Array(args.dropFirst(2))
+    let vaultURL = vaultFileURL()
+
+    guard FileManager.default.fileExists(atPath: vaultURL.path) else {
+        fputs("clip: vault is empty (no assets.json found)\n", stderr)
+        exit(1)
+    }
+
+    let data = try! Data(contentsOf: vaultURL)
+
+    // Pretty-print: decode then re-encode with formatting
+    if let assets = try? JSONDecoder().decode([VaultAsset].self, from: data) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let pretty = try! encoder.encode(assets)
+        let jsonString = String(data: pretty, encoding: .utf8)!
+
+        if let filePath = fileArgument(remainingArgs) {
+            try! jsonString.write(toFile: filePath, atomically: true, encoding: .utf8)
+            fputs("Exported \(assets.count) assets to \(filePath)\n", stderr)
+        } else {
+            print(jsonString, terminator: "")
+        }
+    } else {
+        // Fallback: output raw data
+        if let filePath = fileArgument(remainingArgs) {
+            try! data.write(to: URL(fileURLWithPath: filePath))
+            fputs("Exported vault to \(filePath)\n", stderr)
+        } else {
+            FileHandle.standardOutput.write(data)
+        }
+    }
+
+case "import":
+    let remainingArgs = Array(args.dropFirst(2))
+
+    let inputData: Data
+    if let filePath = fileArgument(remainingArgs) {
+        guard FileManager.default.fileExists(atPath: filePath) else {
+            fputs("clip: file not found: \(filePath)\n", stderr)
+            exit(2)
+        }
+        inputData = try! Data(contentsOf: URL(fileURLWithPath: filePath))
+    } else {
+        inputData = FileHandle.standardInput.readDataToEndOfFile()
+    }
+
+    // Validate JSON
+    guard let _ = try? JSONDecoder().decode([VaultAsset].self, from: inputData) else {
+        fputs("clip: invalid vault JSON\n", stderr)
+        exit(2)
+    }
+
+    let vaultURL = vaultFileURL()
+    let vaultDir = vaultURL.deletingLastPathComponent()
+    try! FileManager.default.createDirectory(at: vaultDir, withIntermediateDirectories: true)
+    try! inputData.write(to: vaultURL)
+    fputs("Vault imported successfully.\n", stderr)
 
 default:
     fputs("clip: unknown subcommand '\(subcommand)'\n", stderr)

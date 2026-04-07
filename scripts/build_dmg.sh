@@ -3,7 +3,7 @@
 # Configuration
 APP_NAME="Clip"
 BUILD_DIR=".build/release"
-VERSION="1.2.1"
+VERSION="1.3.0"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 APP_BUNDLE="${APP_NAME}.app"
 DMG_STAGING="dmg_staging"
@@ -29,8 +29,9 @@ rm -rf "${APP_BUNDLE}"
 mkdir -p "${APP_BUNDLE}/Contents/MacOS"
 mkdir -p "${APP_BUNDLE}/Contents/Resources"
 
-# 3. Copy App Binary
+# 3. Copy App Binary + Icon
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
+cp "Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
 
 # 4. Create Info.plist
 echo "📝 Generating Info.plist..."
@@ -48,11 +49,13 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.2.1</string>
+    <string>1.3.0</string>
     <key>CFBundleVersion</key>
-    <string>3</string>
+    <string>4</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/> <!-- This hides the app from the Dock, suitable for menu bar apps -->
 </dict>

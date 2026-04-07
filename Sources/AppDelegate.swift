@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var statusItem: NSStatusItem!
@@ -54,6 +55,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         clipboardHistoryMenuItem = cbItem
 
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Export Vault…", action: #selector(exportVault), keyEquivalent: "e"))
+        menu.addItem(NSMenuItem(title: "Import Vault…", action: #selector(importVault), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u"))
         menu.addItem(NSMenuItem(title: "Send Feedback", action: #selector(sendFeedback), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -73,6 +78,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             guard event.modifierFlags.intersection([.command, .shift, .option, .control]) == [.command, .shift],
                   event.keyCode == 8 else { return }
             DispatchQueue.main.async { self?.togglePanel() }
+        }
+
+        // Auto-check for updates on launch (silent — only shows alert if update found)
+        Task {
+            if let release = await UpdateChecker.shared.checkForUpdate() {
+                await MainActor.run { showUpdateAlert(release) }
+            }
         }
     }
 
@@ -152,6 +164,99 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
     
+    // MARK: - Update
+
+    @objc func checkForUpdates() {
+        Task {
+            if let release = await UpdateChecker.shared.checkForUpdate() {
+                await MainActor.run { showUpdateAlert(release) }
+            } else {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "You're up to date"
+                    alert.informativeText = "Clip \(UpdateChecker.shared.currentVersion) is the latest version."
+                    alert.alertStyle = .informational
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    private func showUpdateAlert(_ release: UpdateChecker.Release) {
+        let alert = NSAlert()
+        alert.messageText = "Update Available"
+        alert.informativeText = "Clip \(release.version) is available (you have \(UpdateChecker.shared.currentVersion))."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Download")
+        alert.addButton(withTitle: "Later")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let url = release.dmgURL ?? release.htmlURL
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    // MARK: - Export / Import
+
+    @objc func exportVault() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "clip-backup-\(formattedDate()).json"
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(AssetStore.shared.assets)
+            try data.write(to: url)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Export Failed"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .critical
+            alert.runModal()
+        }
+    }
+
+    @objc func importVault() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        // Confirm replacement
+        let confirm = NSAlert()
+        confirm.messageText = "Replace Vault?"
+        confirm.informativeText = "This will replace all current assets with the imported data. This cannot be undone."
+        confirm.alertStyle = .warning
+        confirm.addButton(withTitle: "Replace")
+        confirm.addButton(withTitle: "Cancel")
+
+        guard confirm.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let assets = try JSONDecoder().decode([Asset].self, from: data)
+            AssetStore.shared.assets = assets
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Import Failed"
+            alert.informativeText = "Invalid backup file: \(error.localizedDescription)"
+            alert.alertStyle = .critical
+            alert.runModal()
+        }
+    }
+
+    private func formattedDate() -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyyMMdd"
+        return fmt.string(from: Date())
+    }
+
     private func checkSingleInstance() {
         let bundleID = Bundle.main.bundleIdentifier ?? ""
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
