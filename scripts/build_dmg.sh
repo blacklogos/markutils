@@ -72,7 +72,11 @@ cp "${BUILD_DIR}/clip-tool" "${DMG_STAGING}/clip"
 cp "scripts/install_cli.sh" "${DMG_STAGING}/Install CLI.command"
 chmod +x "${DMG_STAGING}/Install CLI.command"
 
-# 7. Create DMG
+# 7. Strip quarantine from all staged files (prevents Gatekeeper blocks on DMG contents)
+echo "🛡️  Stripping quarantine attributes..."
+xattr -rc "${DMG_STAGING}"
+
+# 8. Create DMG
 echo "💿 Creating DMG..."
 rm -f "${DMG_NAME}"
 hdiutil create -volname "${APP_NAME}" -srcfolder "${DMG_STAGING}" -ov -format UDZO "${DMG_NAME}"
