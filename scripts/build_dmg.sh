@@ -42,46 +42,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 2. Build Quick Look extension (compiled outside SPM as Mach-O bundle)
-echo "🔍 Building Quick Look extension..."
-APPEX_SRC="Sources/ClipQLPreview"
-APPEX_BIN="MarkdownPreview"
-APPEX_DIR="${APP_NAME}.app/Contents/PlugIns/${APPEX_BIN}.appex"
+# NOTE: Quick Look extension (.appex) requires Developer ID signing.
+# Sources are in Sources/ClipQLPreview/ and Sources/ClipQLGenerator/ for when
+# a Developer ID is available. Skipped for ad-hoc builds.
 
-swiftc \
-    -module-name ${APPEX_BIN} \
-    -emit-library \
-    -Xlinker -bundle \
-    -framework Cocoa -framework Quartz -framework WebKit \
-    -target arm64-apple-macosx14.0 \
-    -O \
-    "${APPEX_SRC}/PreviewViewController.swift" \
-    -o "/tmp/${APPEX_BIN}"
-
-if [ $? -ne 0 ]; then
-    echo "⚠️  Quick Look extension build failed (non-fatal, continuing without it)"
-fi
-
-# 3. Create App Bundle Structure
+# 2. Create App Bundle Structure
 echo "📦 Creating App Bundle..."
 rm -rf "${APP_BUNDLE}"
 mkdir -p "${APP_BUNDLE}/Contents/MacOS"
 mkdir -p "${APP_BUNDLE}/Contents/Resources"
 mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
-mkdir -p "${APPEX_DIR}/Contents/MacOS"
 
-# 4. Copy App Binary + Icon + CLI binary + Sparkle Framework + QL Extension
+# 3. Copy App Binary + Icon + CLI binary + Sparkle Framework
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
 cp "Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
 cp "${BUILD_DIR}/clip-tool" "${APP_BUNDLE}/Contents/Resources/clip"
 cp -R "${SPARKLE_FRAMEWORK}" "${APP_BUNDLE}/Contents/Frameworks/"
-
-# Quick Look extension
-if [ -f "/tmp/${APPEX_BIN}" ]; then
-    cp "/tmp/${APPEX_BIN}" "${APPEX_DIR}/Contents/MacOS/${APPEX_BIN}"
-    cp "${APPEX_SRC}/Info.plist" "${APPEX_DIR}/Contents/Info.plist"
-    echo "   QL extension embedded"
-fi
 
 # 4. Create Info.plist
 echo "📝 Generating Info.plist..."
@@ -126,12 +102,9 @@ EOF
 echo "🔗 Fixing rpath for Sparkle..."
 install_name_tool -add_rpath @executable_path/../Frameworks "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
 
-# 6. Ad-hoc Signing — sign inner components first, then outer bundle
+# 6. Ad-hoc Signing — sign framework first, then outer bundle
 echo "🔏 Signing app (Ad-hoc)..."
 codesign --force --deep --sign - "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework" 2>/dev/null
-if [ -d "${APPEX_DIR}" ]; then
-    codesign --force --sign - --entitlements "${APPEX_SRC}/MarkdownPreview.entitlements" "${APPEX_DIR}" 2>/dev/null
-fi
 codesign --force --deep --sign - "${APP_BUNDLE}"
 
 # 7. Stage DMG contents: app only (CLI is bundled inside Clip.app/Contents/Resources/clip)
