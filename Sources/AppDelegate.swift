@@ -273,7 +273,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func installCLI(from sourcePath: String) {
         let dest = "/usr/local/bin/clip"
-        let script = "mkdir -p /usr/local/bin && cp '\(sourcePath)' '\(dest)' && chmod +x '\(dest)'"
+        let script = "mkdir -p /usr/local/bin && cp '\(sourcePath)' '\(dest)' && chmod +x '\(dest)' && xattr -rd com.apple.quarantine '\(dest)'"
 
         let appleScript = NSAppleScript(source: "do shell script \"\(script)\" with administrator privileges")
         var error: NSDictionary?

@@ -26,7 +26,7 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources",
-            exclude: ["ClipCore", "ClipCLI"]
+            exclude: ["ClipCore", "ClipCLI", "ClipQLPreview"]
         ),
         .executableTarget(
             name: "ClipCLI",
