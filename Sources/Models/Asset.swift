@@ -10,8 +10,9 @@ final class Asset: Identifiable, Codable {
     var imageData: Data?
     var name: String? // Optional name, especially for folders
     var children: [Asset]? // For recursive folder structure
-    
-    init(type: AssetType, textContent: String? = nil, imageData: Data? = nil, name: String? = nil, children: [Asset]? = nil) {
+    var fileFormat: String? // Canonical file extension without dot ("md", "txt", "json")
+
+    init(type: AssetType, textContent: String? = nil, imageData: Data? = nil, name: String? = nil, children: [Asset]? = nil, fileFormat: String? = nil) {
         self.id = UUID()
         self.creationDate = Date()
         self.type = type
@@ -19,14 +20,15 @@ final class Asset: Identifiable, Codable {
         self.imageData = imageData
         self.name = name
         self.children = children
+        self.fileFormat = fileFormat
     }
-    
-    
+
+
     // Explicit Codable conformance to avoid @Observable macro issues
     enum CodingKeys: String, CodingKey {
-        case id, creationDate, type, textContent, imageData, name, children
+        case id, creationDate, type, textContent, imageData, name, children, fileFormat
     }
-    
+
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(UUID.self, forKey: .id)
@@ -36,8 +38,9 @@ final class Asset: Identifiable, Codable {
         self.imageData = try container.decodeIfPresent(Data.self, forKey: .imageData)
         self.name = try container.decodeIfPresent(String.self, forKey: .name)
         self.children = try container.decodeIfPresent([Asset].self, forKey: .children)
+        self.fileFormat = try container.decodeIfPresent(String.self, forKey: .fileFormat)
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -47,6 +50,7 @@ final class Asset: Identifiable, Codable {
         try container.encodeIfPresent(imageData, forKey: .imageData)
         try container.encodeIfPresent(name, forKey: .name)
         try container.encodeIfPresent(children, forKey: .children)
+        try container.encodeIfPresent(fileFormat, forKey: .fileFormat)
     }
 }
 

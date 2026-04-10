@@ -421,7 +421,8 @@ struct AssetGridView: View {
                 }
             } else if type.conforms(to: .text) || type.conforms(to: .plainText) || type.conforms(to: .sourceCode) {
                 if let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) {
-                    return Asset(type: .text, textContent: text, name: name)
+                    let ext = url.pathExtension.lowercased()
+                    return Asset(type: .text, textContent: text, name: name, fileFormat: ext.isEmpty ? nil : ext)
                 }
             }
         }
@@ -472,6 +473,12 @@ struct AssetItemView: View {
         asset.name?.hasPrefix("Clipboard ") == true
     }
 
+    private var isMarkdownAsset: Bool {
+        guard asset.type == .text else { return false }
+        let fmt = asset.fileFormat ?? ""
+        return fmt == "md" || fmt == "markdown"
+    }
+
     var body: some View {
         VStack(spacing: 4) {
             ZStack(alignment: .topTrailing) {
@@ -501,6 +508,19 @@ struct AssetItemView: View {
                         .padding(3)
                         .background(Color.gray.opacity(0.7))
                         .clipShape(Circle())
+                        .padding(4)
+                }
+
+                // Markdown badge
+                if isMarkdownAsset {
+                    Text("MD")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.blue.opacity(0.8))
+                        .clipShape(Capsule())
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding(4)
                 }
 
@@ -564,6 +584,19 @@ struct AssetItemView: View {
             }
         }
         .contentShape(Rectangle())
+        .contextMenu {
+            Button("Copy") { copyAsset() }
+            if isMarkdownAsset {
+                Button("Preview Rendered") {
+                    if let text = asset.textContent {
+                        MarkdownPreviewRouter.shared.request(text)
+                    }
+                }
+            }
+            Divider()
+            Button("Rename") { startRename() }
+            Button("Delete", role: .destructive) { deleteAsset() }
+        }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering

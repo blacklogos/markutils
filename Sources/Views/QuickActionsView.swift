@@ -10,6 +10,7 @@ struct QuickActionsView: View {
     @State private var outputMode: OutputMode = .text
     @State private var showCopied = false
     @State private var splitVertical = false  // false = stacked, true = side-by-side
+    private var previewRouter = MarkdownPreviewRouter.shared
 
     enum OutputMode { case text, htmlPreview }
 
@@ -55,6 +56,15 @@ struct QuickActionsView: View {
             StatusBarView(text: input, cursorRange: nil)
         }
         .background(AppColors.windowBackground)
+        .onAppear { consumeRouterText() }
+        .onChange(of: previewRouter.pendingText) { _, _ in consumeRouterText() }
+    }
+
+    private func consumeRouterText() {
+        if let text = previewRouter.consume() {
+            input = text
+            outputMode = .htmlPreview
+        }
     }
 
     // MARK: - Input Pane
@@ -78,6 +88,12 @@ struct QuickActionsView: View {
                 }
 
                 Spacer()
+
+                Button(action: openMarkdownFile) {
+                    Image(systemName: "folder.badge.plus")
+                }
+                .buttonStyle(.plain)
+                .help("Open Markdown file…")
 
                 Button(action: pasteFromClipboard) {
                     Image(systemName: "doc.on.clipboard")
@@ -254,6 +270,30 @@ struct QuickActionsView: View {
     }
 
     // MARK: - Actions
+
+    private func openMarkdownFile() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if let mdType = UTType(filenameExtension: "md") {
+            panel.allowedContentTypes = [mdType, .plainText]
+        } else {
+            panel.allowedContentTypes = [.plainText]
+        }
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            input = text
+            output = ""
+            outputMode = .htmlPreview
+        } catch {
+            let alert = NSAlert(error: error)
+            alert.runModal()
+        }
+    }
 
     private func pasteFromClipboard() {
         if let text = NSPasteboard.general.string(forType: .string) {
