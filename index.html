@@ -204,7 +204,7 @@
       <!-- Version badge -->
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-mono mb-8 border" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
         <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-        v1.3.0 &middot; macOS 14+ &middot; Swift 5.9
+        v1.4.0 &middot; macOS 14+ &middot; Swift 5.9
       </div>
 
       <!-- App icon -->
@@ -290,16 +290,16 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
         <p class="text-base" style="color: var(--muted);">Four tabs. No Dock icon. Always accessible from your menu bar.</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F5C2;</div>
           <h3 class="font-display text-lg font-700 mb-2">Asset Vault</h3>
-          <p class="text-sm leading-relaxed" style="color: var(--muted);">Drag images and text in from anywhere. Organise into folders. Drag back out to Keynote, Pages, or any app.</p>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Drag images and text in from anywhere. Organise into folders. Recursive deep search finds assets at any depth.</p>
         </div>
         <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x21C4;</div>
           <h3 class="font-display text-lg font-700 mb-2">Smart Transform</h3>
-          <p class="text-sm leading-relaxed" style="color: var(--muted);">Paste anything &mdash; auto-detects Markdown, HTML, CSV, TSV, or plain text. Side-by-side split view for comparison.</p>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Paste anything &mdash; auto-detects Markdown, HTML, CSV, TSV. Open .md files from disk. Side-by-side split view.</p>
         </div>
         <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1D400;</div>
@@ -328,7 +328,7 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Drag & drop from any app</li>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Nested folder organisation</li>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Grid or compact list view</li>
-            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Full-text search across all assets</li>
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Deep recursive search across all folders</li>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Persistent JSON storage &mdash; survives restarts</li>
           </ul>
         </div>
@@ -365,13 +365,14 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
         </div>
         <div class="order-1 md:order-2">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-600 mb-4" style="background: rgba(var(--accent-rgb), 0.1); color: var(--accent);">Smart Transform</div>
-          <h3 class="font-display text-2xl sm:text-3xl font-700 mb-4">Paste anything. Get the right output.</h3>
-          <p class="leading-relaxed mb-4" style="color: var(--muted);">Clip auto-detects what you pasted and shows only the relevant conversions. Markdown, HTML, CSV, TSV, plain text &mdash; all handled. Toggle side-by-side split view to compare input and output.</p>
+          <h3 class="font-display text-2xl sm:text-3xl font-700 mb-4">Paste anything. Open any .md file.</h3>
+          <p class="leading-relaxed mb-4" style="color: var(--muted);">Clip auto-detects what you pasted and shows the right conversions. Open Markdown files from disk with the file picker. Toggle split view to compare input and output side by side.</p>
           <ul class="space-y-2 text-sm" style="color: var(--muted);">
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Open .md files from disk with rendered preview</li>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Markdown &#x2192; HTML with live preview</li>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> TSV/CSV &#x2194; Markdown tables</li>
-            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> HTML &#x2192; Markdown</li>
             <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Drag rendered preview as RTF into any app</li>
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Import .md into vault with MD badge &amp; preview action</li>
           </ul>
         </div>
       </div>
@@ -398,21 +399,31 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
         </div>
       </div>
 
-      <!-- Feature detail 4: Export/Import + Auto-Update -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Feature detail 4: New in 1.4 — grid of 3 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F4BE;</div>
           <h3 class="font-display text-lg font-700 mb-2">Export / Import</h3>
-          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">Back up your vault as JSON. Restore on any Mac. GUI dialogs in the app, or use the CLI for scripting and cron jobs.</p>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">Back up your vault as JSON. Restore on any Mac. GUI dialogs or CLI for scripting and cron jobs.</p>
           <code class="block text-xs font-mono p-3 rounded-lg leading-5" style="background: var(--surface-2); color: var(--muted);">clip export --file ~/backup.json<br>clip import --file ~/backup.json</code>
         </div>
         <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F504;</div>
-          <h3 class="font-display text-lg font-700 mb-2">Auto-Update</h3>
-          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">Clip checks GitHub Releases on launch. When a new version is available, one click downloads the latest DMG. Manual check from the menu bar anytime.</p>
+          <h3 class="font-display text-lg font-700 mb-2">Sparkle Auto-Update</h3>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">Powered by the Sparkle framework. Checks for updates on launch, verifies EdDSA signatures, downloads and installs in the background.</p>
           <div class="flex items-center gap-3 text-xs font-mono p-3 rounded-lg" style="background: var(--surface-2); color: var(--muted);">
             <span class="w-2 h-2 rounded-full bg-green-500"></span>
-            Update available: v1.3.1 &nbsp;&#x2192;&nbsp; <span style="color: var(--accent);">Download</span>
+            Update available: v1.4.1 &nbsp;&#x2192;&nbsp; <span style="color: var(--accent);">Install &amp; Relaunch</span>
+          </div>
+        </div>
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F3A8;</div>
+          <h3 class="font-display text-lg font-700 mb-2">SVG &amp; PNG</h3>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">Copy SVG text assets to clipboard or drag to design tools. Paste any image as PNG from screenshots, Preview, or other apps.</p>
+          <div class="flex gap-2 text-xs font-mono" style="color: var(--muted);">
+            <span class="px-2 py-1 rounded" style="background: var(--surface-2);">Copy as SVG</span>
+            <span class="px-2 py-1 rounded" style="background: var(--surface-2);">Paste PNG</span>
+            <span class="px-2 py-1 rounded" style="background: var(--surface-2);">Drag SVG</span>
           </div>
         </div>
       </div>
@@ -440,7 +451,7 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
           </div>
           <div>
             <h3 class="font-display font-700 text-lg mb-1">Download the DMG</h3>
-            <p class="text-sm leading-relaxed mb-2" style="color: var(--muted);">Grab <strong>Clip-1.3.0.dmg</strong> from the latest GitHub release. The DMG contains the app, the CLI binary, and an installer script.</p>
+            <p class="text-sm leading-relaxed mb-2" style="color: var(--muted);">Grab <strong>Clip-1.4.0.dmg</strong> from the latest GitHub release. The DMG contains the app, the CLI binary, and an installer script.</p>
             <a href="https://github.com/blacklogos/markutils/releases/latest" class="inline-flex items-center gap-1.5 text-sm font-500" style="color: var(--accent);">
               Download latest release &rarr;
             </a>
@@ -566,11 +577,11 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
 
         <details class="rounded-xl border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
           <summary class="flex items-center justify-between p-5 font-body font-600 text-base cursor-pointer">
-            Does Clip have any dependencies?
+            What are Clip's dependencies?
             <svg class="faq-chevron w-5 h-5 flex-shrink-0" style="color: var(--muted);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </summary>
           <div class="faq-body px-5 pb-5 text-sm leading-relaxed" style="color: var(--muted);">
-            Zero. Pure Swift + AppKit + SwiftUI + WebKit. No Homebrew formulas, no Node modules, no CocoaPods. The app binary is fully self-contained.
+            One: <a href="https://sparkle-project.org" style="color: var(--accent);">Sparkle</a> for auto-updates (bundled in the app). Everything else is pure Swift + AppKit + SwiftUI + WebKit. No Homebrew, no Node, no CocoaPods.
           </div>
         </details>
 
@@ -603,7 +614,7 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
       <span class="hidden sm:inline">&middot;</span>
       <a href="https://github.com/blacklogos/markutils/issues" class="underline hover:no-underline" style="color: var(--text);">Feedback</a>
     </div>
-    <p class="text-xs font-mono" style="color: var(--border);">v1.3.0 &middot; macOS 14+ &middot; Swift 5.9 &middot; Zero dependencies</p>
+    <p class="text-xs font-mono" style="color: var(--border);">v1.4.0 &middot; macOS 14+ &middot; Swift 5.9 &middot; Sparkle auto-update</p>
   </footer>
 
   <script>
