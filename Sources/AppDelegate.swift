@@ -1,8 +1,14 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Sparkle
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var statusItem: NSStatusItem!
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
     var floatingPanel: FloatingPanel!
     var window: NSWindow!
     var mouseShakeDetector: MouseShakeDetector!
@@ -58,7 +64,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(NSMenuItem(title: "Export Vault…", action: #selector(exportVault), keyEquivalent: "e"))
         menu.addItem(NSMenuItem(title: "Import Vault…", action: #selector(importVault), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u"))
+        let checkForUpdatesItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+            keyEquivalent: "u"
+        )
+        checkForUpdatesItem.target = updaterController
+        menu.addItem(checkForUpdatesItem)
         menu.addItem(NSMenuItem(title: "Send Feedback", action: #selector(sendFeedback), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -80,12 +92,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async { self?.togglePanel() }
         }
 
-        // Auto-check for updates on launch (silent — only shows alert if update found)
-        Task {
-            if let release = await UpdateChecker.shared.checkForUpdate() {
-                await MainActor.run { showUpdateAlert(release) }
-            }
-        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -164,39 +170,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
     
-    // MARK: - Update
-
-    @objc func checkForUpdates() {
-        Task {
-            if let release = await UpdateChecker.shared.checkForUpdate() {
-                await MainActor.run { showUpdateAlert(release) }
-            } else {
-                await MainActor.run {
-                    let alert = NSAlert()
-                    alert.messageText = "You're up to date"
-                    alert.informativeText = "Clip \(UpdateChecker.shared.currentVersion) is the latest version."
-                    alert.alertStyle = .informational
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
-                }
-            }
-        }
-    }
-
-    private func showUpdateAlert(_ release: UpdateChecker.Release) {
-        let alert = NSAlert()
-        alert.messageText = "Update Available"
-        alert.informativeText = "Clip \(release.version) is available (you have \(UpdateChecker.shared.currentVersion))."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Download")
-        alert.addButton(withTitle: "Later")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            let url = release.dmgURL ?? release.htmlURL
-            NSWorkspace.shared.open(url)
-        }
-    }
-
     // MARK: - Export / Import
 
     @objc func exportVault() {

@@ -11,6 +11,9 @@ let package = Package(
         .executable(name: "clip-tool", targets: ["ClipCLI"]),
         .library(name: "ClipCore", targets: ["ClipCore"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
+    ],
     targets: [
         .target(
             name: "ClipCore",
@@ -18,7 +21,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "Clip",
-            dependencies: ["ClipCore"],
+            dependencies: [
+                "ClipCore",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources",
             exclude: ["ClipCore", "ClipCLI"]
         ),
