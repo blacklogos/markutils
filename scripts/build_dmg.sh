@@ -93,12 +93,16 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-# 5. Ad-hoc Signing — sign framework first, then outer bundle
+# 5. Fix rpath so the binary finds Sparkle.framework at runtime
+echo "🔗 Fixing rpath for Sparkle..."
+install_name_tool -add_rpath @executable_path/../Frameworks "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
+
+# 6. Ad-hoc Signing — sign framework first, then outer bundle
 echo "🔏 Signing app (Ad-hoc)..."
 codesign --force --deep --sign - "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework" 2>/dev/null
 codesign --force --deep --sign - "${APP_BUNDLE}"
 
-# 6. Stage DMG contents: app + clip CLI binary + install script
+# 7. Stage DMG contents: app + clip CLI binary + install script
 echo "📁 Staging DMG contents..."
 rm -rf "${DMG_STAGING}"
 mkdir -p "${DMG_STAGING}"
@@ -107,11 +111,11 @@ cp "${BUILD_DIR}/clip-tool" "${DMG_STAGING}/clip"
 cp "scripts/install_cli.sh" "${DMG_STAGING}/Install CLI.command"
 chmod +x "${DMG_STAGING}/Install CLI.command"
 
-# 7. Strip quarantine from all staged files (prevents Gatekeeper blocks on DMG contents)
+# 8. Strip quarantine from all staged files (prevents Gatekeeper blocks on DMG contents)
 echo "🛡️  Stripping quarantine attributes..."
 xattr -rc "${DMG_STAGING}"
 
-# 8. Create DMG
+# 9. Create DMG
 echo "💿 Creating DMG..."
 rm -f "${DMG_NAME}"
 hdiutil create -volname "${APP_NAME}" -srcfolder "${DMG_STAGING}" -ov -format UDZO "${DMG_NAME}"
