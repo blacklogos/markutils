@@ -64,6 +64,12 @@ struct AssetGridView: View {
                 Text("Assets")
                     .font(.headline)
                 Spacer()
+                Button(action: pasteAsPNG) {
+                    Label("Paste PNG", systemImage: "doc.on.clipboard")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
                 Button(action: { showFileImporter = true }) {
                     Label("Add Files", systemImage: "plus.circle")
                 }
@@ -247,6 +253,14 @@ struct AssetGridView: View {
                 return nil
             }
         } else if asset.type == .text, let text = asset.textContent {
+            // Register SVG type for drag-out to design tools
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("<svg") || trimmed.hasPrefix("<?xml") {
+                provider.registerDataRepresentation(forTypeIdentifier: "public.svg-image", visibility: .all) { completion in
+                    completion(text.data(using: .utf8), nil)
+                    return nil
+                }
+            }
             provider.registerDataRepresentation(forTypeIdentifier: UTType.plainText.identifier, visibility: .all) { completion in
                 completion(text.data(using: .utf8), nil)
                 return nil
@@ -395,6 +409,23 @@ struct AssetGridView: View {
         }
     }
     
+    private func pasteAsPNG() {
+        let pb = NSPasteboard.general
+        guard let image = NSImage(pasteboard: pb),
+              let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else {
+            let alert = NSAlert()
+            alert.messageText = "Nothing to paste"
+            alert.informativeText = "Clipboard doesn't contain an image."
+            alert.alertStyle = .informational
+            alert.runModal()
+            return
+        }
+        let asset = Asset(type: .image, imageData: png, name: "Pasted Image")
+        store.add(asset)
+    }
+
     private func createAsset(from url: URL) -> Asset? {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return nil }
@@ -586,6 +617,9 @@ struct AssetItemView: View {
         .contentShape(Rectangle())
         .contextMenu {
             Button("Copy") { copyAsset() }
+            if isSVGAsset {
+                Button("Copy as SVG") { copyAsset() }
+            }
             if isMarkdownAsset {
                 Button("Preview Rendered") {
                     if let text = asset.textContent {
@@ -616,6 +650,12 @@ struct AssetItemView: View {
         isRenaming = false
     }
 
+    private var isSVGAsset: Bool {
+        guard asset.type == .text, let text = asset.textContent else { return false }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("<svg") || trimmed.hasPrefix("<?xml")
+    }
+
     private func copyAsset() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -623,6 +663,9 @@ struct AssetItemView: View {
         if asset.type == .image, let data = asset.imageData {
             pasteboard.setData(data, forType: .png)
         } else if asset.type == .text, let text = asset.textContent {
+            if isSVGAsset {
+                pasteboard.setString(text, forType: NSPasteboard.PasteboardType("public.svg-image"))
+            }
             pasteboard.setString(text, forType: .string)
         }
 
@@ -757,27 +800,31 @@ struct CompactAssetRowView: View {
         isRenaming = false
     }
     
+    private var isSVGAsset: Bool {
+        guard asset.type == .text, let text = asset.textContent else { return false }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("<svg") || trimmed.hasPrefix("<?xml")
+    }
+
     private func copyAsset() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        
+
         if asset.type == .image, let data = asset.imageData {
             pasteboard.setData(data, forType: .png)
         } else if asset.type == .text, let text = asset.textContent {
+            if isSVGAsset {
+                pasteboard.setString(text, forType: NSPasteboard.PasteboardType("public.svg-image"))
+            }
             pasteboard.setString(text, forType: .string)
         }
-        
-        withAnimation {
-            showCopiedFeedback = true
-        }
-        
+
+        withAnimation { showCopiedFeedback = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation {
-                showCopiedFeedback = false
-            }
+            withAnimation { showCopiedFeedback = false }
         }
     }
-    
+
     private func deleteAsset() {
         withAnimation {
             store.delete(asset)
