@@ -71,6 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         checkForUpdatesItem.target = updaterController
         menu.addItem(checkForUpdatesItem)
+        menu.addItem(NSMenuItem(title: "Install CLI…", action: #selector(installCLIFromMenu), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Send Feedback", action: #selector(sendFeedback), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -92,6 +93,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async { self?.togglePanel() }
         }
 
+        // Offer CLI install on first launch
+        offerCLIInstallIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -228,6 +231,67 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyyMMdd"
         return fmt.string(from: Date())
+    }
+
+    // MARK: - CLI Install
+
+    private func offerCLIInstallIfNeeded() {
+        let cliInstalled = UserDefaults.standard.bool(forKey: "cliInstallOffered")
+        let cliExists = FileManager.default.fileExists(atPath: "/usr/local/bin/clip")
+
+        // Don't prompt if already installed or already offered
+        guard !cliInstalled && !cliExists else { return }
+
+        // Check if the bundled CLI binary exists
+        guard let bundledCLI = Bundle.main.path(forResource: "clip", ofType: nil) else { return }
+
+        UserDefaults.standard.set(true, forKey: "cliInstallOffered")
+
+        let alert = NSAlert()
+        alert.messageText = "Install clip CLI?"
+        alert.informativeText = "Install the clip command-line tool to /usr/local/bin for terminal access.\n\nYou can also install it later from the menu bar."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Install")
+        alert.addButton(withTitle: "Not Now")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        installCLI(from: bundledCLI)
+    }
+
+    @objc func installCLIFromMenu() {
+        guard let bundledCLI = Bundle.main.path(forResource: "clip", ofType: nil) else {
+            let alert = NSAlert()
+            alert.messageText = "CLI binary not found"
+            alert.informativeText = "The clip binary is missing from the app bundle."
+            alert.alertStyle = .warning
+            alert.runModal()
+            return
+        }
+        installCLI(from: bundledCLI)
+    }
+
+    private func installCLI(from sourcePath: String) {
+        let dest = "/usr/local/bin/clip"
+        let script = "mkdir -p /usr/local/bin && cp '\(sourcePath)' '\(dest)' && chmod +x '\(dest)'"
+
+        let appleScript = NSAppleScript(source: "do shell script \"\(script)\" with administrator privileges")
+        var error: NSDictionary?
+        appleScript?.executeAndReturnError(&error)
+
+        if let error = error {
+            let alert = NSAlert()
+            alert.messageText = "Installation failed"
+            alert.informativeText = error[NSAppleScript.errorMessage] as? String ?? "Unknown error"
+            alert.alertStyle = .warning
+            alert.runModal()
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "CLI installed"
+            alert.informativeText = "The clip command is now available in your terminal.\n\nTry: clip --help"
+            alert.alertStyle = .informational
+            alert.runModal()
+        }
     }
 
     private func checkSingleInstance() {

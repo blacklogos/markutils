@@ -49,9 +49,10 @@ mkdir -p "${APP_BUNDLE}/Contents/MacOS"
 mkdir -p "${APP_BUNDLE}/Contents/Resources"
 mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
 
-# 3. Copy App Binary + Icon + Sparkle Framework
+# 3. Copy App Binary + Icon + CLI binary + Sparkle Framework
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
 cp "Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
+cp "${BUILD_DIR}/clip-tool" "${APP_BUNDLE}/Contents/Resources/clip"
 cp -R "${SPARKLE_FRAMEWORK}" "${APP_BUNDLE}/Contents/Frameworks/"
 
 # 4. Create Info.plist
@@ -102,14 +103,11 @@ echo "🔏 Signing app (Ad-hoc)..."
 codesign --force --deep --sign - "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework" 2>/dev/null
 codesign --force --deep --sign - "${APP_BUNDLE}"
 
-# 7. Stage DMG contents: app + clip CLI binary + install script
+# 7. Stage DMG contents: app only (CLI is bundled inside Clip.app/Contents/Resources/clip)
 echo "📁 Staging DMG contents..."
 rm -rf "${DMG_STAGING}"
 mkdir -p "${DMG_STAGING}"
 cp -r "${APP_BUNDLE}" "${DMG_STAGING}/"
-cp "${BUILD_DIR}/clip-tool" "${DMG_STAGING}/clip"
-cp "scripts/install_cli.sh" "${DMG_STAGING}/Install CLI.command"
-chmod +x "${DMG_STAGING}/Install CLI.command"
 
 # 8. Strip quarantine from all staged files (prevents Gatekeeper blocks on DMG contents)
 echo "🛡️  Stripping quarantine attributes..."
@@ -123,7 +121,7 @@ hdiutil create -volname "${APP_NAME}" -srcfolder "${DMG_STAGING}" -ov -format UD
 if [ $? -eq 0 ]; then
     rm -rf "${DMG_STAGING}"
     echo "✅ DMG created successfully: ${DMG_NAME}"
-    echo "   Contents: Clip.app (with Sparkle) • clip (CLI) • Install CLI.command"
+    echo "   Contents: Clip.app (Sparkle + bundled CLI)"
 else
     echo "❌ DMG creation failed."
     exit 1
