@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var showOnboarding = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var snippetStore = SnippetStore.shared
+    private var previewRouter = MarkdownPreviewRouter.shared
     
     enum AppTheme: String, CaseIterable, Identifiable {
         case system = "System"
@@ -96,6 +97,11 @@ struct ContentView: View {
         .onAppear {
             if !hasSeenOnboarding {
                 showOnboarding = true
+            }
+        }
+        .onChange(of: previewRouter.pendingText) { _, newValue in
+            if newValue != nil {
+                selectedTab = 1 // Switch to Transform tab
             }
         }
         .background(WindowAccessor { window in

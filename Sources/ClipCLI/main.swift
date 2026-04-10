@@ -92,6 +92,7 @@ struct VaultAsset: Codable {
     let imageData: Data?
     let name: String?
     let children: [VaultAsset]?
+    let fileFormat: String?
 }
 
 func vaultFileURL() -> URL {
