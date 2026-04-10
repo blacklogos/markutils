@@ -13,13 +13,38 @@ struct AssetGridView: View {
         store.assets.sorted { $0.creationDate > $1.creationDate }
     }
 
-    // Applies search filter when active
+    // Applies search filter when active — recursively searches into folder children
     private var assets: [Asset] {
         guard !searchText.isEmpty else { return allAssets }
-        let q = searchText.lowercased()
-        return allAssets.filter { asset in
+        return Self.searchAssets(allAssets, query: searchText)
+    }
+
+    /// Recursively searches assets and their children, flattening matches into a single list.
+    /// Folders that directly match are included. Non-matching folders have their matching
+    /// descendants surfaced to the top level.
+    static func searchAssets(_ assets: [Asset], query: String) -> [Asset] {
+        let q = query.lowercased()
+        var results: [Asset] = []
+        for asset in assets {
+            collectMatches(asset, query: q, into: &results)
+        }
+        return results
+    }
+
+    private static func collectMatches(_ asset: Asset, query q: String, into results: inout [Asset]) {
+        let selfMatches =
             (asset.name?.lowercased().contains(q) ?? false) ||
             (asset.textContent?.lowercased().contains(q) ?? false)
+
+        if selfMatches {
+            results.append(asset)
+            return
+        }
+
+        if asset.type == .folder, let children = asset.children {
+            for child in children {
+                collectMatches(child, query: q, into: &results)
+            }
         }
     }
 
