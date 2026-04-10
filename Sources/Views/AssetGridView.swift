@@ -411,10 +411,12 @@ struct AssetGridView: View {
     
     private func pasteAsPNG() {
         let pb = NSPasteboard.general
-        guard let image = NSImage(pasteboard: pb),
+        guard let objects = pb.readObjects(forClasses: [NSImage.self], options: nil),
+              let image = objects.first as? NSImage,
               let tiff = image.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiff),
-              let png = bitmap.representation(using: .png, properties: [:]) else {
+              let png = bitmap.representation(using: .png, properties: [:]),
+              !png.isEmpty else {
             let alert = NSAlert()
             alert.messageText = "Nothing to paste"
             alert.informativeText = "Clipboard doesn't contain an image."

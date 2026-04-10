@@ -8,7 +8,7 @@ struct ContentView: View {
     @State private var showOnboarding = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var snippetStore = SnippetStore.shared
-    private var previewRouter = MarkdownPreviewRouter.shared
+    @State private var previewRouter = MarkdownPreviewRouter.shared
     
     enum AppTheme: String, CaseIterable, Identifiable {
         case system = "System"

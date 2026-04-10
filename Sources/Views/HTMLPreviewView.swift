@@ -90,9 +90,19 @@ struct HTMLPreviewView: NSViewRepresentable {
             th     { background: var(--th-bg); font-weight: 600;
                      font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
             tbody tr:nth-child(even) td { background: var(--even-bg); }
+            .clip-footer {
+                margin-top: 2em;
+                padding-top: 0.8em;
+                border-top: 1px solid var(--border);
+                text-align: center;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                font-size: 0.75em;
+                color: var(--fg2);
+                letter-spacing: 0.02em;
+            }
         </style>
         </head>
-        <body>\(htmlContent)</body>
+        <body>\(htmlContent)<div class="clip-footer">MD Preview by Clip</div></body>
         </html>
         """
     }

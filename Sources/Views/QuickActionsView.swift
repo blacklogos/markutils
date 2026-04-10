@@ -10,7 +10,7 @@ struct QuickActionsView: View {
     @State private var outputMode: OutputMode = .text
     @State private var showCopied = false
     @State private var splitVertical = false  // false = stacked, true = side-by-side
-    private var previewRouter = MarkdownPreviewRouter.shared
+    @State private var previewRouter = MarkdownPreviewRouter.shared
 
     enum OutputMode { case text, htmlPreview }
 
