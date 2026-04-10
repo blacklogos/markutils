@@ -81,6 +81,8 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
     <true/>
     <key>SUFeedURL</key>
     <string>https://raw.githubusercontent.com/blacklogos/markutils/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>RW+dYl0koHbGSchUeD80V0ALWoSDMDdbXlkl0iofeDQ=</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
     <key>SUScheduledCheckInterval</key>

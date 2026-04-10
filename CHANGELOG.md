@@ -4,6 +4,43 @@ All notable changes to Clip are documented here.
 
 ---
 
+## v1.4.0 — 2026-04-09
+
+### New features
+
+**Recursive Vault Search** (#6)
+- Search now descends into nested folders at any depth
+- Matching assets are flattened into the results while preserving sections
+- 10 unit tests for search logic
+
+**Markdown File Preview & Import** (#8, #9)
+- `Asset.fileFormat` field tracks the original file extension (backward-compatible with v1.3 vaults)
+- MD badge overlay on markdown text assets
+- "Preview Rendered" context menu action on markdown assets — opens Transform tab with live preview
+- "Open File…" button in Transform tab loads `.md` files via NSOpenPanel
+- `MarkdownPreviewRouter` singleton routes markdown content from vault to Transform tab
+
+**SVG Copy & PNG Paste** (#7)
+- "Copy as SVG" for text assets containing SVG markup (registers `public.svg-image`)
+- SVG drag-out via NSItemProvider for design tool interop
+- "Paste PNG" toolbar button converts any clipboard image to PNG asset
+- Error alert when clipboard is empty or non-image
+
+**Sparkle Auto-Update** (#5)
+- Replaced custom `UpdateChecker.swift` with Sparkle framework (de-facto macOS auto-update)
+- `SPUStandardUpdaterController` wired in AppDelegate — auto-checks on launch
+- "Check for Updates…" menu item targets Sparkle directly
+- `build_dmg.sh` bundles `Sparkle.framework` in `Contents/Frameworks/`
+- `appcast.xml` with EdDSA-signed release entry
+- `CFBundleIdentifier` fixed from `com.example.Clip` to `io.blacklogos.clip`
+
+### Changes
+- Version bumped to 1.4.0, build number 5
+- `*.pem` added to `.gitignore`
+- `Package.resolved` committed for reproducible builds
+
+---
+
 ## v1.3.0 — 2026-04-08
 
 ### New features

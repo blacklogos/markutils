@@ -2,7 +2,7 @@
 
 A lightweight macOS menu bar utility for content creators. Lives in the menu bar — no Dock icon, always one click away.
 
-**Version 1.3.0** · macOS 14+ · Swift 5.9 · No dependencies
+**Version 1.4.0** · macOS 14+ · Swift 5.9 · Sparkle auto-update
 
 ---
 
