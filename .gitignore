@@ -8,3 +8,4 @@ Clip.app/
 dmg_staging/
 .claude/
 .agent/
+*.pem
