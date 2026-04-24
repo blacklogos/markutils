@@ -1,25 +1,22 @@
 import SwiftUI
 
-// Standalone floating panel dedicated to the Notes feature.
-// Mirrors FloatingPanel.swift exactly — different autosave name, min size, and default rect.
+// Borderless floating panel for the minimal Notes experience.
+// No titlebar — content fills the entire window rect.
+// Draggable via isMovableByWindowBackground.
 class NotesPanel: NSPanel {
     init(contentRect: NSRect, backing: NSWindow.BackingStoreType, defer flag: Bool) {
         super.init(contentRect: contentRect,
-                   styleMask: [.nonactivatingPanel, .titled, .resizable, .closable, .fullSizeContentView],
+                   styleMask: [.nonactivatingPanel, .resizable],
                    backing: backing,
                    defer: flag)
 
         self.isFloatingPanel = true
         self.level = .floating
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        self.titleVisibility = .hidden
-        self.titlebarAppearsTransparent = true
-        self.isMovableByWindowBackground = false
+        self.isMovableByWindowBackground = true
         self.isReleasedWhenClosed = false
-        self.standardWindowButton(.closeButton)?.isHidden = true
-        self.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        self.standardWindowButton(.zoomButton)?.isHidden = true
-        self.minSize = NSSize(width: 350, height: 400)
+        self.backgroundColor = .windowBackgroundColor
+        self.minSize = NSSize(width: 300, height: 360)
         self.setFrameAutosaveName("ClipNotesPanel")
     }
 
