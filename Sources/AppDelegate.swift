@@ -14,6 +14,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var mouseShakeDetector: MouseShakeDetector!
 
     private var globalHotkeyMonitor: Any?
+    private var notesPanelHotkeyMonitor: Any?
+    var notesPanel: NotesPanel?
     private var clipboardHistoryMenuItem: NSMenuItem?
 
     
@@ -35,6 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Setup Menu
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Open Clip", action: #selector(togglePanel), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "Open Notes  ⌥A", action: #selector(toggleNotesPanel), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
 
         // Theme Submenu
@@ -72,6 +75,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         checkForUpdatesItem.target = updaterController
         menu.addItem(checkForUpdatesItem)
         menu.addItem(NSMenuItem(title: "Install CLI…", action: #selector(installCLIFromMenu), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Keyword Reference", action: #selector(showKeywordReference), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Send Feedback", action: #selector(sendFeedback), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -93,21 +97,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async { self?.togglePanel() }
         }
 
+        // Global hotkey: ⌥A (keyCode 0 = A) — dedicated to Notes panel
+        notesPanelHotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.modifierFlags.intersection([.command, .shift, .option, .control]) == [.option],
+                  event.keyCode == 0 else { return }
+            DispatchQueue.main.async { self?.toggleNotesPanel() }
+        }
+
         // Offer CLI install on first launch
         offerCLIInstallIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        if let monitor = globalHotkeyMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
+        if let monitor = globalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
+        if let monitor = notesPanelHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         ClipboardMonitor.shared.stopMonitoring()
     }
     
     private func createFloatingPanel() {
         let contentView = ContentView()
         
-        let viewWithModel = AnyView(contentView.environment(AssetStore.shared))
+        let viewWithModel = AnyView(
+            contentView
+                .environment(AssetStore.shared)
+                .environment(NoteStore.shared)
+        )
         
         let hostingController = NSHostingController(rootView: viewWithModel)
         
@@ -158,6 +172,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             NSWorkspace.shared.open(url)
         }
     }
+
+    private var keywordReferencePanel: NSPanel?
+
+    @objc func showKeywordReference() {
+        if keywordReferencePanel == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
+                styleMask: [.titled, .closable, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Keyword Reference"
+            panel.level = .floating
+            panel.isReleasedWhenClosed = false
+            panel.contentViewController = NSHostingController(rootView: KeywordReferenceView())
+            panel.center()
+            keywordReferencePanel = panel
+        }
+        keywordReferencePanel?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
     
     // NSWindowDelegate - Handle window closing (red x button)
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -171,6 +206,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             floatingPanel.makeKeyAndOrderFront(nil)
         }
         NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    private func createNotesPanel() {
+        let rootView = AnyView(
+            NotesView()
+                .environment(NoteStore.shared)
+                .environment(AssetStore.shared)
+        )
+        notesPanel = NotesPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 640),
+            backing: .buffered,
+            defer: false
+        )
+        notesPanel?.contentViewController = NSHostingController(rootView: rootView)
+        notesPanel?.center()
+        notesPanel?.delegate = self
+        notesPanel?.isReleasedWhenClosed = false
+    }
+
+    @objc func toggleNotesPanel() {
+        if notesPanel == nil { createNotesPanel() }
+        guard let panel = notesPanel else { return }
+        if panel.isVisible {
+            panel.orderOut(nil)
+        } else {
+            panel.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
     }
     
     // MARK: - Export / Import
