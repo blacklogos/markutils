@@ -35,7 +35,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         // Paste/copy are overridden in PlainTextView to keep plain-text semantics.
         textView.isEditable = true
         textView.isSelectable = true
-        textView.font = .systemFont(ofSize: 13)
+        textView.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
         textView.backgroundColor = .clear
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
@@ -130,7 +130,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
             guard !text.isEmpty else { return }
             let nsText = text as NSString
             let fullRange = NSRange(location: 0, length: nsText.length)
-            let baseFont = NSFont.systemFont(ofSize: 13)
+            // Monospaced base font — full Unicode (Vietnamese + Latin) via SF Mono / Menlo
+            let baseFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
 
             // Reset all text to base appearance (isRichText=true means we own all attributes)
             storage.setAttributes([
@@ -141,7 +142,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
             // Inline patterns — applied before headings so headings win on overlap
             styleInline(in: storage, text: nsText, pattern: Self.boldRegex,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
-                        contentAttrs: [.font: NSFont.boldSystemFont(ofSize: 13)])
+                        contentAttrs: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)])
 
             styleInline(in: storage, text: nsText, pattern: Self.italicRegex,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
@@ -157,17 +158,16 @@ struct MarkdownTextEditor: NSViewRepresentable {
             styleInline(in: storage, text: nsText, pattern: Self.codeRegex,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
                         contentAttrs: [
-                            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+                            // same size as body — just highlight background
+                            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
                             .backgroundColor: NSColor.tertiaryLabelColor.withAlphaComponent(0.08)
                         ])
 
-            // Headings — applied last so they override inline styling on heading lines
+            // Headings — bold + accent color, NO size change (keeps fixed-width grid intact)
             Self.headingRegex?.enumerateMatches(in: text, range: fullRange) { match, _, _ in
                 guard let match else { return }
-                let hashes = nsText.substring(with: match.range(at: 1))
-                let size: CGFloat = hashes.count == 1 ? 18 : hashes.count == 2 ? 15 : 13
                 storage.addAttributes([
-                    .font: NSFont.boldSystemFont(ofSize: size),
+                    .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .bold),
                     .foregroundColor: Self.accentColor
                 ], range: match.range)
             }
@@ -244,7 +244,10 @@ struct MarkdownTextEditor: NSViewRepresentable {
         private static let quoteRegex   = try? NSRegularExpression(pattern: #"^(>) (.+)$"#,      options: .anchorsMatchLines)
 
         private static let italicFont: NSFont = {
-            NSFontManager.shared.convert(.systemFont(ofSize: 13), toHaveTrait: .italicFontMask)
+            NSFontManager.shared.convert(
+                .monospacedSystemFont(ofSize: 13, weight: .regular),
+                toHaveTrait: .italicFontMask
+            )
         }()
 
         private static let accentColor = NSColor(name: nil) { appearance in

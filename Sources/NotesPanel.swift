@@ -1,12 +1,12 @@
 import SwiftUI
 
 // Borderless floating panel for the minimal Notes experience.
-// No titlebar — content fills the entire window rect.
-// Draggable via isMovableByWindowBackground.
+// isOpaque=false + backgroundColor=.clear lets SwiftUI render rounded corners
+// by making areas outside the RoundedRectangle fully transparent.
 class NotesPanel: NSPanel {
     init(contentRect: NSRect, backing: NSWindow.BackingStoreType, defer flag: Bool) {
         super.init(contentRect: contentRect,
-                   styleMask: [.nonactivatingPanel, .resizable],
+                   styleMask: [.nonactivatingPanel, .resizable, .miniaturizable],
                    backing: backing,
                    defer: flag)
 
@@ -15,7 +15,9 @@ class NotesPanel: NSPanel {
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.isMovableByWindowBackground = true
         self.isReleasedWhenClosed = false
-        self.backgroundColor = .windowBackgroundColor
+        self.isOpaque = false
+        self.backgroundColor = .clear
+        self.hasShadow = true
         self.minSize = NSSize(width: 300, height: 360)
         self.setFrameAutosaveName("ClipNotesPanel")
     }

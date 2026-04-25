@@ -496,6 +496,7 @@ struct AssetItemView: View {
     @State private var showCopiedFeedback = false
     @State private var isRenaming = false
     @State private var editName = ""
+    @State private var confirmDelete = false
 
     private var displayName: String {
         asset.name ?? (asset.type == .text ? String(asset.textContent?.prefix(20) ?? "Text") : "Image")
@@ -567,7 +568,7 @@ struct AssetItemView: View {
                         VStack {
                             HStack {
                                 Spacer()
-                                Button(action: deleteAsset) {
+                                Button { confirmDelete = true } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundStyle(.white)
@@ -631,12 +632,18 @@ struct AssetItemView: View {
             }
             Divider()
             Button("Rename") { startRename() }
-            Button("Delete", role: .destructive) { deleteAsset() }
+            Button("Delete", role: .destructive) { confirmDelete = true }
         }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
             }
+        }
+        .alert("Delete asset?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { deleteAsset() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 
@@ -709,6 +716,7 @@ struct CompactAssetRowView: View {
     @State private var showCopiedFeedback = false
     @State private var isRenaming = false
     @State private var editName = ""
+    @State private var confirmDelete = false
 
     private var isClipboardItem: Bool { asset.name?.hasPrefix("Clipboard ") == true }
 
@@ -763,7 +771,7 @@ struct CompactAssetRowView: View {
                     .buttonStyle(.plain)
                     .help("Copy to Clipboard")
 
-                    Button(action: deleteAsset) {
+                    Button { confirmDelete = true } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.red.opacity(0.8))
                     }
@@ -781,6 +789,12 @@ struct CompactAssetRowView: View {
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
             }
+        }
+        .alert("Delete asset?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { deleteAsset() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 

@@ -102,6 +102,8 @@ struct ContentView: View {
                 selectedTab = 1 // Switch to Transform tab
             }
         }
+        // Absorb ⌘N so the system never opens a new document window.
+        .background(Button("") {}.keyboardShortcut("n", modifiers: .command).hidden())
         .background(WindowAccessor { window in
             guard let window = window else { return }
             window.titleVisibility = .hidden

@@ -15,13 +15,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private var globalHotkeyMonitor: Any?
     private var notesPanelHotkeyMonitor: Any?
+    private var notesPanelLocalHotkeyMonitor: Any?
     var notesPanel: NotesPanel?
     private var clipboardHistoryMenuItem: NSMenuItem?
 
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         checkSingleInstance()
-        
+
+        // Register default hotkey: ⌥A (keyCode 0, modifier .option).
+        // To change: UserDefaults.standard.set(newKeyCode, forKey: "notesHotkeyKeyCode")
+        //            UserDefaults.standard.set(Int(NSEvent.ModifierFlags.option.rawValue), forKey: "notesHotkeyModifiers")
+        UserDefaults.standard.register(defaults: [
+            "notesHotkeyKeyCode": 0,
+            "notesHotkeyModifiers": Int(NSEvent.ModifierFlags.option.rawValue)
+        ])
+
         // Hide Dock Icon
         NSApp.setActivationPolicy(.accessory)
         
@@ -97,11 +106,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async { self?.togglePanel() }
         }
 
-        // Global hotkey: ⌥A (keyCode 0 = A) — dedicated to Notes panel
+        // Notes panel hotkey — fires when OTHER apps are in focus
         notesPanelHotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard event.modifierFlags.intersection([.command, .shift, .option, .control]) == [.option],
-                  event.keyCode == 0 else { return }
+            guard self?.matchesNotesHotkey(event) == true else { return }
             DispatchQueue.main.async { self?.toggleNotesPanel() }
+        }
+        // Notes panel hotkey — fires when Clip itself is active (needed to dismiss panel)
+        // Does not intercept when a text field/editor has focus to avoid eating typed characters.
+        notesPanelLocalHotkeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard self?.matchesNotesHotkey(event) == true else { return event }
+            let firstResponder = NSApp.keyWindow?.firstResponder
+            if firstResponder is NSTextView || firstResponder is NSTextField { return event }
+            DispatchQueue.main.async { self?.toggleNotesPanel() }
+            return nil
         }
 
         // Offer CLI install on first launch
@@ -111,7 +128,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         if let monitor = globalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         if let monitor = notesPanelHotkeyMonitor { NSEvent.removeMonitor(monitor) }
+        if let monitor = notesPanelLocalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         ClipboardMonitor.shared.stopMonitoring()
+    }
+
+    // Reads hotkey config from UserDefaults so the combination can be changed at runtime.
+    private func matchesNotesHotkey(_ event: NSEvent) -> Bool {
+        let keyCode = UInt16(UserDefaults.standard.integer(forKey: "notesHotkeyKeyCode"))
+        let mods = NSEvent.ModifierFlags(rawValue: UInt(UserDefaults.standard.integer(forKey: "notesHotkeyModifiers")))
+        return event.modifierFlags.intersection([.command, .shift, .option, .control]) == mods
+            && event.keyCode == keyCode
     }
     
     private func createFloatingPanel() {
@@ -209,20 +235,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func createNotesPanel() {
-        let rootView = AnyView(
-            NotesView()
-                .environment(NoteStore.shared)
-                .environment(AssetStore.shared)
-        )
-        notesPanel = NotesPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 640),
+        let panel = NotesPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 480),
             backing: .buffered,
             defer: false
         )
-        notesPanel?.contentViewController = NSHostingController(rootView: rootView)
-        notesPanel?.center()
-        notesPanel?.delegate = self
-        notesPanel?.isReleasedWhenClosed = false
+        let rootView = MinimalNotesView(
+            onClose:    { [weak panel] in panel?.orderOut(nil) },
+            onMinimize: { [weak panel] in panel?.miniaturize(nil) },
+            onZoom:     { [weak panel] in panel?.zoom(nil) }
+        )
+        .environment(NoteStore.shared)
+        .environment(AssetStore.shared)
+        panel.contentViewController = NSHostingController(rootView: rootView)
+        panel.center()
+        panel.delegate = self
+        panel.isReleasedWhenClosed = false
+        notesPanel = panel
     }
 
     @objc func toggleNotesPanel() {
