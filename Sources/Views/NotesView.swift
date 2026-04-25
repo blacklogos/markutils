@@ -25,9 +25,8 @@ struct NotesView: View {
                 .animation(.easeInOut(duration: 0.18), value: sidebarVisible)
             }
 
-            // Ephemeral bottom status bar — appears for contextual messages (e.g. ⌘N guard)
-            if let message = bottomMessage {
-                Text(message)
+            if let msg = bottomMessage {
+                Text(msg)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 12)
@@ -38,16 +37,8 @@ struct NotesView: View {
             }
         }
         .onAppear {
-            if selectedNote == nil {
-                selectedNote = store.todayNote
-            }
+            if selectedNote == nil { selectedNote = store.todayNote }
         }
-        // ⌘N: new note (with empty-note guard)
-        .background(
-            Button("") { createNewNote() }
-                .keyboardShortcut("n", modifiers: .command)
-                .hidden()
-        )
     }
 
     // MARK: - Toolbar
@@ -63,6 +54,23 @@ struct NotesView: View {
             }
             .buttonStyle(.plain)
             .help("Toggle sidebar")
+
+            Button(action: createNewNote) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("New note")
+
+            Button(action: confirmAndDeleteNote) {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Delete note")
+            .disabled(selectedNote == nil)
 
             Spacer()
 
@@ -164,6 +172,50 @@ struct NotesView: View {
 
     // MARK: - Actions
 
+    private func createNewNote() {
+        let currentBody = selectedNote?.body.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if currentBody.isEmpty {
+            showEphemeralMessage("don't waste tree. use this note.")
+            return
+        }
+        let note = Note()
+        store.add(note)
+        selectedNote = note
+        isPreview = false
+    }
+
+    private func showEphemeralMessage(_ message: String) {
+        withAnimation(.easeOut(duration: 0.15)) { bottomMessage = message }
+        Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            withAnimation(.easeOut(duration: 0.3)) { bottomMessage = nil }
+        }
+    }
+
+    private func confirmAndDeleteNote() {
+        let alert = NSAlert()
+        alert.messageText = "Delete note?"
+        alert.informativeText = "This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        deleteCurrentNote()
+    }
+
+    private func deleteCurrentNote() {
+        guard let note = selectedNote else { return }
+        let sorted = store.notes.sorted { $0.date > $1.date }
+        let idx = sorted.firstIndex(where: { $0.id == note.id })
+        store.delete(note)
+        if let idx {
+            let fallback = sorted.indices.contains(idx) ? sorted[min(idx, sorted.count - 2)] : nil
+            selectedNote = store.notes.isEmpty ? nil : fallback
+        } else {
+            selectedNote = store.notes.first
+        }
+    }
+
     private func copyToClipboard() {
         guard let body = selectedNote?.body else { return }
         NSPasteboard.general.clearContents()
@@ -214,26 +266,6 @@ struct NotesView: View {
         NoteStore.shared.save()
     }
 
-    private func createNewNote() {
-        let currentBody = selectedNote?.body.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if currentBody.isEmpty {
-            showBottomMessage("don't waste tree. use this note.")
-            return
-        }
-        let note = Note()
-        store.add(note)
-        selectedNote = note
-        isPreview = false
-    }
-
-    private func showBottomMessage(_ message: String) {
-        withAnimation(.easeInOut(duration: 0.2)) { bottomMessage = message }
-        Task {
-            try? await Task.sleep(for: .seconds(2.5))
-            withAnimation(.easeInOut(duration: 0.3)) { bottomMessage = nil }
-        }
-    }
-
     private func exportFilename(for note: Note) -> String {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
@@ -251,16 +283,16 @@ private struct NoteRowView: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(dateLabel)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppColors.accent : .primary)
                 let preview = note.body.components(separatedBy: .newlines)
-                    .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? ""
+                    .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? "(empty)"
                 Text(preview)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? AppColors.accent : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                Text(dateLabel)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
