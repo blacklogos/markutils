@@ -298,6 +298,7 @@ private struct NoteRowView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(isSelected ? AppColors.accent.opacity(0.12) : Color.clear)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
