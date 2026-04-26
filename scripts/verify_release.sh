@@ -3,6 +3,12 @@ set -e
 
 echo "🚀 Starting Release Verification..."
 
+echo "🔒 Checking Package.resolved for dependency drift..."
+swift package resolve 2>/dev/null
+if ! git diff --quiet Package.resolved 2>/dev/null; then
+    echo "⚠️  Package.resolved has drifted — commit the updated file before releasing."
+fi
+
 echo "📦 Building Clip..."
 swift build
 

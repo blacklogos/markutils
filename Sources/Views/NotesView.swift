@@ -37,7 +37,7 @@ struct NotesView: View {
             }
         }
         .onAppear {
-            if selectedNote == nil { selectedNote = store.todayNote }
+            if selectedNote == nil { selectedNote = store.ensureTodayNote() }
         }
     }
 
@@ -123,9 +123,10 @@ struct NotesView: View {
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        ScrollView {
+        let sorted = store.notes.sorted { $0.date > $1.date }
+        return ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(store.notes.sorted(by: { $0.date > $1.date })) { note in
+                ForEach(sorted) { note in
                     NoteRowView(note: note, isSelected: selectedNote?.id == note.id) {
                         selectedNote = note
                         isPreview = false
@@ -303,11 +304,13 @@ private struct NoteRowView: View {
         .buttonStyle(.plain)
     }
 
+    private static let rowDateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; return f
+    }()
+
     private var dateLabel: String {
         if Calendar.current.isDateInToday(note.date) { return "Today" }
         if Calendar.current.isDateInYesterday(note.date) { return "Yesterday" }
-        let fmt = DateFormatter()
-        fmt.dateFormat = "MMM d"
-        return fmt.string(from: note.date)
+        return Self.rowDateFormatter.string(from: note.date)
     }
 }

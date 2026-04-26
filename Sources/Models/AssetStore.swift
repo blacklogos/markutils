@@ -34,6 +34,14 @@ class AssetStore {
         assets.removeAll { $0.id == asset.id }
     }
 
+    // Backs up the current vault file before replacing in-memory assets.
+    // The backup sits at <assets.json>.bak so it survives a failed import.
+    func backupAndImport(_ newAssets: [Asset]) {
+        let backupURL = fileURL.appendingPathExtension("bak")
+        try? FileManager.default.copyItem(at: fileURL, to: backupURL)
+        assets = newAssets  // triggers save via didSet
+    }
+
     /// Call after mutating an asset's properties (name, etc.) to persist the change.
     func save() {
         do {

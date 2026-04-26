@@ -17,6 +17,8 @@ final class Note: Identifiable, Codable {
         self.updatedAt = Date()
     }
 
+    // Manual Codable required: @Observable macro generates stored properties that
+    // conflict with synthesized init(from:) — same pattern as Asset.swift.
     enum CodingKeys: String, CodingKey {
         case id, body, date, updatedAt
     }
@@ -45,10 +47,11 @@ final class NoteStore {
     static let shared = NoteStore()
 
     var notes: [Note] = [] {
-        didSet { save() }
+        didSet { scheduleSave() }
     }
 
     private let fileURL: URL
+    private var saveTimer: Timer?
 
     private init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -58,13 +61,14 @@ final class NoteStore {
         load()
     }
 
-    // Returns today's note, creating one if none exists for today.
-    var todayNote: Note {
+    // Ensures today's note exists; creates one if needed. Mutation is explicit here.
+    @discardableResult
+    func ensureTodayNote() -> Note {
         if let existing = notes.first(where: { Calendar.current.isDateInToday($0.date) }) {
             return existing
         }
         let note = Note()
-        add(note)
+        notes.append(note)
         return note
     }
 
@@ -76,12 +80,29 @@ final class NoteStore {
         notes.removeAll { $0.id == note.id }
     }
 
-    func save() {
+    // Debounced save — coalesces rapid mutations (e.g. per-keystroke) into one write per 300ms idle.
+    func save() { scheduleSave() }
+
+    // Flush any pending debounced save immediately (call from applicationWillTerminate).
+    func flushPendingSave() {
+        saveTimer?.invalidate()
+        saveTimer = nil
+        persistToDisk()
+    }
+
+    private func scheduleSave() {
+        saveTimer?.invalidate()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+            self?.persistToDisk()
+        }
+    }
+
+    private func persistToDisk() {
         do {
             let data = try JSONEncoder().encode(notes)
             try data.write(to: fileURL)
         } catch {
-            print("NoteStore save failed: \(error)")
+            // Silent — avoid exposing file paths in console logs
         }
     }
 
@@ -91,7 +112,7 @@ final class NoteStore {
             let data = try Data(contentsOf: fileURL)
             notes = try JSONDecoder().decode([Note].self, from: data)
         } catch {
-            print("NoteStore load failed: \(error)")
+            // Silent — avoid exposing file paths in console logs
         }
     }
 }

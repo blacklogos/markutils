@@ -32,11 +32,13 @@ struct MinimalNotesView: View {
     }
 
     var body: some View {
+        // Compute sorted+filtered notes once per render to avoid redundant sorts in sub-views.
+        let notes = filteredNotes
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 topBar
                 mainContent
-                bottomBar
+                bottomBarView(notes: notes)
             }
 
             // Ephemeral "don't waste tree" message
@@ -58,7 +60,7 @@ struct MinimalNotesView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .preferredColorScheme(preferredColorScheme)
-        .onAppear { if selectedNote == nil { selectedNote = store.todayNote } }
+        .onAppear { if selectedNote == nil { selectedNote = store.ensureTodayNote() } }
         // ⌘N: new note with empty-note guard (only active in this panel)
         .background(
             Button("") { createNewNote() }
@@ -191,9 +193,15 @@ struct MinimalNotesView: View {
     }
 
     // MARK: - Bottom bar (28px, immediate show / quick-fade hide)
+    // Accepts pre-sorted notes to avoid recomputing sort in multiple computed properties.
 
-    private var bottomBar: some View {
-        HStack(spacing: 10) {
+    private func bottomBarView(notes: [Note]) -> some View {
+        let idx     = notes.firstIndex(where: { $0.id == selectedNote?.id })
+        let hasPrev = (idx ?? 0) < notes.count - 1
+        let hasNext = (idx ?? 0) > 0
+        let isFirst = notes.first?.id == selectedNote?.id
+
+        return HStack(spacing: 10) {
             // Prev / Next navigation
             Button { selectAdjacentNote(offset: +1) } label: {
                 Image(systemName: "chevron.left")
@@ -214,14 +222,13 @@ struct MinimalNotesView: View {
             .help("Newer note")
 
             // Jump to the very first (newest) note
-            Button { selectedNote = sortedNotes.first; isPreview = false } label: {
+            Button { selectedNote = notes.first; isPreview = false } label: {
                 Image(systemName: "arrow.up.to.line")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(sortedNotes.first?.id == selectedNote?.id
-                                     ? Color.secondary.opacity(0.3) : .secondary)
+                    .foregroundStyle(isFirst ? Color.secondary.opacity(0.3) : .secondary)
             }
             .buttonStyle(.plain)
-            .disabled(sortedNotes.first?.id == selectedNote?.id)
+            .disabled(isFirst)
             .help("First note")
 
             Spacer()
@@ -302,23 +309,17 @@ struct MinimalNotesView: View {
     private var sortedNotes: [Note] { store.notes.sorted { $0.date > $1.date } }
 
     private var filteredNotes: [Note] {
-        guard !searchQuery.isEmpty else { return sortedNotes }
-        return sortedNotes.filter { $0.body.localizedCaseInsensitiveContains(searchQuery) }
+        let sorted = sortedNotes
+        guard !searchQuery.isEmpty else { return sorted }
+        return sorted.filter { $0.body.localizedCaseInsensitiveContains(searchQuery) }
     }
-
-    private var currentIndex: Int? {
-        sortedNotes.firstIndex(where: { $0.id == selectedNote?.id })
-    }
-
-    // sortedNotes[0] = newest; higher index = older
-    private var hasPrev: Bool { (currentIndex ?? 0) < sortedNotes.count - 1 }
-    private var hasNext: Bool { (currentIndex ?? 0) > 0 }
 
     private func selectAdjacentNote(offset: Int) {
-        guard let idx = currentIndex else { return }
+        let sorted = sortedNotes
+        guard let idx = sorted.firstIndex(where: { $0.id == selectedNote?.id }) else { return }
         let target = idx + offset
-        guard sortedNotes.indices.contains(target) else { return }
-        selectedNote = sortedNotes[target]
+        guard sorted.indices.contains(target) else { return }
+        selectedNote = sorted[target]
         isPreview = false
     }
 
@@ -390,21 +391,20 @@ struct MinimalNotesView: View {
 
     // MARK: - Labels
 
+    private static let metaDateFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "MMM d"; return f }()
+    private static let metaTimeFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "h:mm a"; return f }()
+
     // "Apr 25 · 11:38 PM"
     private func metaLabel(_ note: Note) -> String {
-        let d = DateFormatter(); d.dateFormat = "MMM d"
-        let t = DateFormatter(); t.dateFormat = "h:mm a"
-        return "\(d.string(from: note.date)) · \(t.string(from: note.updatedAt))"
+        "\(Self.metaDateFmt.string(from: note.date)) · \(Self.metaTimeFmt.string(from: note.updatedAt))"
     }
 
     // "Today at 11:38 PM" / "Yesterday at …" / "Apr 24 at …"
     private func editedLabel(_ note: Note) -> String {
-        let t = DateFormatter(); t.dateFormat = "h:mm a"
-        let time = t.string(from: note.updatedAt)
+        let time = Self.metaTimeFmt.string(from: note.updatedAt)
         if Calendar.current.isDateInToday(note.date)     { return "Today at \(time)" }
         if Calendar.current.isDateInYesterday(note.date) { return "Yesterday at \(time)" }
-        let d = DateFormatter(); d.dateFormat = "MMM d"
-        return "\(d.string(from: note.date)) at \(time)"
+        return "\(Self.metaDateFmt.string(from: note.date)) at \(time)"
     }
 
     // MARK: - Checkbox toggle

@@ -56,9 +56,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         guard !context.coordinator.isUpdating, textView.string != text else { return }
         textView.string = text
-        // Re-apply styling after external text replacement
+        // Re-apply styling after external text replacement (full document, no dirty range)
         if let storage = textView.textStorage {
-            context.coordinator.applyMarkdownAttributes(to: storage)
+            context.coordinator.applyMarkdownAttributes(to: storage, in: nil)
         }
     }
 
@@ -114,57 +114,61 @@ struct MarkdownTextEditor: NSViewRepresentable {
         // .editedCharacters guard prevents recursion: addAttributes/setAttributes calls
         // inside this callback fire the delegate again with .editedAttributes only,
         // which this guard blocks.
+        //
+        // Restricts restyling to the edited paragraph rather than the full document,
+        // cutting the O(6n) per-keystroke cost to a single paragraph's worth of work.
 
         func textStorage(_ textStorage: NSTextStorage,
                          didProcessEditing editedMask: NSTextStorageEditActions,
                          range editedRange: NSRange,
                          changeInLength delta: Int) {
             guard editedMask.contains(.editedCharacters) else { return }
-            applyMarkdownAttributes(to: textStorage)
+            let paraRange = (textStorage.string as NSString).paragraphRange(for: editedRange)
+            applyMarkdownAttributes(to: textStorage, in: paraRange)
         }
 
         // MARK: Inline markdown attribute styling
 
-        func applyMarkdownAttributes(to storage: NSTextStorage) {
+        // dirtyRange: nil = full document (used on initial load / external text replacement).
+        func applyMarkdownAttributes(to storage: NSTextStorage, in dirtyRange: NSRange? = nil) {
             let text = storage.string
             guard !text.isEmpty else { return }
             let nsText = text as NSString
-            let fullRange = NSRange(location: 0, length: nsText.length)
+            let workRange = dirtyRange ?? NSRange(location: 0, length: nsText.length)
             // Monospaced base font — full Unicode (Vietnamese + Latin) via SF Mono / Menlo
             let baseFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
 
-            // Reset all text to base appearance (isRichText=true means we own all attributes)
+            // Reset the work range to base appearance (isRichText=true means we own all attributes)
             storage.setAttributes([
                 .font: baseFont,
                 .foregroundColor: NSColor.labelColor
-            ], range: fullRange)
+            ], range: workRange)
 
-            // Inline patterns — applied before headings so headings win on overlap
-            styleInline(in: storage, text: nsText, pattern: Self.boldRegex,
+            // Inline patterns restricted to workRange — applied before headings so headings win
+            styleInline(in: storage, text: nsText, pattern: Self.boldRegex, range: workRange,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
                         contentAttrs: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)])
 
-            styleInline(in: storage, text: nsText, pattern: Self.italicRegex,
+            styleInline(in: storage, text: nsText, pattern: Self.italicRegex, range: workRange,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
                         contentAttrs: [.font: Self.italicFont])
 
-            styleInline(in: storage, text: nsText, pattern: Self.strikeRegex,
+            styleInline(in: storage, text: nsText, pattern: Self.strikeRegex, range: workRange,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
                         contentAttrs: [
                             .strikethroughStyle: NSUnderlineStyle.single.rawValue,
                             .foregroundColor: NSColor.secondaryLabelColor
                         ])
 
-            styleInline(in: storage, text: nsText, pattern: Self.codeRegex,
+            styleInline(in: storage, text: nsText, pattern: Self.codeRegex, range: workRange,
                         markerAttrs: [.foregroundColor: NSColor.tertiaryLabelColor],
                         contentAttrs: [
-                            // same size as body — just highlight background
                             .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
                             .backgroundColor: NSColor.tertiaryLabelColor.withAlphaComponent(0.08)
                         ])
 
             // Headings — bold + accent color, NO size change (keeps fixed-width grid intact)
-            Self.headingRegex?.enumerateMatches(in: text, range: fullRange) { match, _, _ in
+            Self.headingRegex?.enumerateMatches(in: text, range: workRange) { match, _, _ in
                 guard let match else { return }
                 storage.addAttributes([
                     .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .bold),
@@ -173,7 +177,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
             }
 
             // Blockquotes — secondary color, > marker dimmed
-            Self.quoteRegex?.enumerateMatches(in: text, range: fullRange) { match, _, _ in
+            Self.quoteRegex?.enumerateMatches(in: text, range: workRange) { match, _, _ in
                 guard let match else { return }
                 storage.addAttributes([.foregroundColor: NSColor.secondaryLabelColor], range: match.range)
                 storage.addAttributes([.foregroundColor: NSColor.tertiaryLabelColor], range: match.range(at: 1))
@@ -184,10 +188,10 @@ struct MarkdownTextEditor: NSViewRepresentable {
         // Capture group 1 must be the content (markers are before/after it in the full match).
         private func styleInline(in storage: NSTextStorage, text: NSString,
                                  pattern: NSRegularExpression?,
+                                 range: NSRange,
                                  markerAttrs: [NSAttributedString.Key: Any],
                                  contentAttrs: [NSAttributedString.Key: Any]) {
-            let fullRange = NSRange(location: 0, length: text.length)
-            pattern?.enumerateMatches(in: text as String, range: fullRange) { match, _, _ in
+            pattern?.enumerateMatches(in: text as String, range: range) { match, _, _ in
                 guard let match, match.numberOfRanges >= 2 else { return }
                 let contentRange = match.range(at: 1)
                 let openLen = contentRange.location - match.range.location
@@ -264,14 +268,15 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 .map { $0.content } ?? ""
         }
 
+        private static let longDateFormatter: DateFormatter = {
+            let f = DateFormatter(); f.dateStyle = .long; f.timeStyle = .none; return f
+        }()
+
         private func formattedDate(offset days: Int) -> String {
             var components = DateComponents()
             components.day = days
             let date = Calendar.current.date(byAdding: components, to: Date()) ?? Date()
-            let fmt = DateFormatter()
-            fmt.dateStyle = .long
-            fmt.timeStyle = .none
-            return fmt.string(from: date)
+            return Self.longDateFormatter.string(from: date)
         }
     }
 }

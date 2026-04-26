@@ -130,14 +130,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let monitor = notesPanelHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         if let monitor = notesPanelLocalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         ClipboardMonitor.shared.stopMonitoring()
+        NoteStore.shared.flushPendingSave()
     }
 
     // Reads hotkey config from UserDefaults so the combination can be changed at runtime.
+    // Requires at least one modifier key to prevent capturing unmodified keystrokes globally.
     private func matchesNotesHotkey(_ event: NSEvent) -> Bool {
         let keyCode = UInt16(UserDefaults.standard.integer(forKey: "notesHotkeyKeyCode"))
         let mods = NSEvent.ModifierFlags(rawValue: UInt(UserDefaults.standard.integer(forKey: "notesHotkeyModifiers")))
-        return event.modifierFlags.intersection([.command, .shift, .option, .control]) == mods
-            && event.keyCode == keyCode
+        let validModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        guard !mods.intersection(validModifiers).isEmpty else { return false }
+        return event.modifierFlags.intersection(validModifiers) == mods && event.keyCode == keyCode
     }
     
     private func createFloatingPanel() {
@@ -309,11 +312,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         do {
             let data = try Data(contentsOf: url)
             let assets = try JSONDecoder().decode([Asset].self, from: data)
-            AssetStore.shared.assets = assets
+            // Backup existing vault before replacing — recoverable from <assets.json>.bak
+            AssetStore.shared.backupAndImport(assets)
         } catch {
             let alert = NSAlert()
             alert.messageText = "Import Failed"
-            alert.informativeText = "Invalid backup file: \(error.localizedDescription)"
+            alert.informativeText = "Invalid backup file."
             alert.alertStyle = .critical
             alert.runModal()
         }
@@ -363,9 +367,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         installCLI(from: bundledCLI)
     }
 
+    // POSIX single-quote escaping: surround with ' and escape embedded ' as '\''
+    private func shellQuotedPath(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
     private func installCLI(from sourcePath: String) {
         let dest = "/usr/local/bin/clip"
-        let script = "mkdir -p /usr/local/bin && cp '\(sourcePath)' '\(dest)' && chmod +x '\(dest)' && xattr -rd com.apple.quarantine '\(dest)'"
+        let qSrc = shellQuotedPath(sourcePath)
+        let qDst = shellQuotedPath(dest)
+        let script = "mkdir -p /usr/local/bin && cp \(qSrc) \(qDst) && chmod +x \(qDst) && xattr -rd com.apple.quarantine \(qDst)"
 
         let appleScript = NSAppleScript(source: "do shell script \"\(script)\" with administrator privileges")
         var error: NSDictionary?
