@@ -8,116 +8,123 @@ struct ContentView: View {
     @State private var showOnboarding = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var previewRouter = MarkdownPreviewRouter.shared
-    
+
     enum AppTheme: String, CaseIterable, Identifiable {
         case system = "System"
         case light = "Light"
         case dark = "Dark"
-        
+
         var id: String { rawValue }
-        
+
         var colorScheme: ColorScheme? {
             switch self {
             case .system: return nil
-            case .light: return .light
-            case .dark: return .dark
+            case .light:  return .light
+            case .dark:   return .dark
             }
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Compressed single-row header: tabs left, spacer (draggable), controls right
-            HStack(spacing: 8) {
-                // Spacer for traffic-light buttons (macOS injects them on the left)
-                Spacer().frame(width: 72)
-
-                Picker("Tabs", selection: $selectedTab) {
-                    Image(systemName: "square.grid.2x2")      .tag(0).help("Assets")
-                    Image(systemName: "arrow.left.arrow.right").tag(1).help("Transform")
-                    Image(systemName: "textformat.abc")        .tag(2).help("Text Formatter")
-                    Image(systemName: "square.and.pencil")     .tag(3).help("Notes")
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 220)
-
-                Spacer() // draggable gap
-
-                // Theme cycle: system → light → dark → system
-                Button(action: cycleTheme) {
-                    Image(systemName: themeIcon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Theme: \(appTheme.rawValue) — click to cycle")
-
-                // Pin button
-                Button(action: togglePin) {
-                    Image(systemName: isPinned ? "pin.fill" : "pin")
-                        .font(.system(size: 12))
-                        .foregroundStyle(isPinned ? AppColors.accent : .secondary)
-                }
-                .buttonStyle(.plain)
-                .help(isPinned ? "Unpin from top" : "Pin to top")
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(AppColors.toolbarBackground)
-            .background(WindowDragView()) // Make header draggable
-            
+            titleBar
             Divider()
-            
-            // Content Area
-            Group {
-                switch selectedTab {
-                case 0:
-                    AssetGridView()
-                case 1:
-                    QuickActionsView()
-                case 2:
-                    SocialMediaFormatterView(text: $socialInput)
-                case 3:
-                    NotesView()
-                default:
-                    Text("Unknown Tab")
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            tabContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColors.windowBackground)
-        .edgesIgnoringSafeArea(.top)
         .preferredColorScheme(appTheme.colorScheme)
         .sheet(isPresented: $showOnboarding) {
             OnboardingView(isPresented: $showOnboarding)
         }
         .onAppear {
-            if !hasSeenOnboarding {
-                showOnboarding = true
-            }
+            if !hasSeenOnboarding { showOnboarding = true }
         }
         .onChange(of: previewRouter.pendingText) { _, newValue in
-            if newValue != nil {
-                selectedTab = 1 // Switch to Transform tab
-            }
+            if newValue != nil { selectedTab = 1 }
         }
         // Absorb ⌘N so the system never opens a new document window.
         .background(Button("") {}.keyboardShortcut("n", modifiers: .command).hidden())
-        .background(WindowAccessor { window in
-            guard let window = window else { return }
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.fullSizeContentView)
-            window.standardWindowButton(.closeButton)?.isHidden = false
-            window.standardWindowButton(.miniaturizeButton)?.isHidden = false
-            window.standardWindowButton(.zoomButton)?.isHidden = false
-        })
     }
-    
+
+    // MARK: - Compact title bar
+    //
+    // 72pt left inset reserves horizontal space for the native traffic-light cluster.
+    // Plain icon buttons (no segmented control background) are visible in the titlebar zone.
+    // WindowDragView background makes the entire row draggable.
+    private var titleBar: some View {
+        HStack(spacing: 0) {
+            Color.clear.frame(width: 8) // left breathing room
+
+            // Tab icons
+            tabIcon(0, icon: "square.grid.2x2",        tooltip: "Assets")
+            tabIcon(1, icon: "arrow.left.arrow.right",  tooltip: "Transform")
+            tabIcon(2, icon: "textformat.abc",           tooltip: "Text Formatter")
+            tabIcon(3, icon: "square.and.pencil",        tooltip: "Notes")
+
+            Spacer() // draggable gap
+
+            // Utility icons
+            toolbarButton(icon: themeIcon, tint: nil, tooltip: "Theme: \(appTheme.rawValue)", action: cycleTheme)
+            toolbarButton(
+                icon: isPinned ? "pin.fill" : "pin",
+                tint: isPinned ? AppColors.accent : nil,
+                tooltip: isPinned ? "Unpin from top" : "Pin to top",
+                action: togglePin
+            )
+
+            Color.clear.frame(width: 8) // right breathing room
+        }
+        .frame(height: 30)
+        .background(AppColors.toolbarBackground)
+        .background(WindowDragView())
+    }
+
+    // MARK: - Tab content area
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case 0: AssetGridView()
+        case 1: QuickActionsView()
+        case 2: SocialMediaFormatterView(text: $socialInput)
+        case 3: NotesView()
+        default: AssetGridView()
+        }
+    }
+
+    // MARK: - Button helpers
+
+    private func tabIcon(_ tag: Int, icon: String, tooltip: String) -> some View {
+        let isSelected = selectedTab == tag
+        return Button { selectedTab = tag } label: {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? AppColors.accent : Color.secondary)
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
+    }
+
+    private func toolbarButton(icon: String, tint: Color?, tooltip: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(tint ?? Color.secondary)
+                .frame(width: 28, height: 30)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
+    }
+
+    // MARK: - Actions
+
     private func togglePin() {
         isPinned.toggle()
-        if let window = NSApp.mainWindow {
+        if let window = NSApp.keyWindow {
             window.level = isPinned ? .floating : .normal
         }
     }
@@ -137,54 +144,4 @@ struct ContentView: View {
         case .dark:   return "moon"
         }
     }
-}
-
-struct CircleButton: View {
-    let color: Color
-    let action: () -> Void
-    @State private var isHovering = false
-    
-    var body: some View {
-        Button(action: action) {
-            Circle()
-                .fill(color)
-                .frame(width: 12, height: 12)
-                .overlay(
-                    Group {
-                        if isHovering {
-                            Image(systemName: iconName)
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(.black.opacity(0.5))
-                        }
-                    }
-                )
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            isHovering = hovering
-        }
-    }
-    
-    private var iconName: String {
-        switch color {
-        case .red: return "xmark"
-        case .yellow: return "minus"
-        case .green: return "plus" // Arrows usually, but plus is fine for zoom
-        default: return ""
-        }
-    }
-}
-
-struct WindowAccessor: NSViewRepresentable {
-    var callback: (NSWindow?) -> Void
-    
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            self.callback(view.window)
-        }
-        return view
-    }
-    
-    func updateNSView(_ nsView: NSView, context: Context) {}
 }
