@@ -4,6 +4,43 @@ All notable changes to Clip are documented here.
 
 ---
 
+## v1.5.0 — 2026-04-26
+
+### New features
+
+**Notes Tab** (#15)
+- Daily markdown editor built into the main window (tab 4)
+- Auto-creates a "today" note on first open
+- Inline markdown styling (bold, italic, strikethrough, code, headings, blockquotes)
+- Keyword expansion: `::meeting`, `::proposal`, `::slides`, `::table`, `::today`, `::tomorrow`, `[ ]`
+- Preview rendered markdown with interactive checkboxes
+- Send note to Transform tab, copy to clipboard, export as `.md`
+- Floating Notes panel (⌥A) for distraction-free writing alongside any app
+
+**Compact Icon Titlebar**
+- Replaced segmented tab picker with compact SF Symbol icon buttons inline with traffic lights
+- Each icon has a hover tooltip (Assets, Transform, Text Formatter, Notes)
+- Theme cycle and pin-to-top controls in the same row
+- Eliminated rogue `WindowGroup` window that was causing the tab bar to render invisible on first launch
+
+**Quick Look Extension**
+- `.clip` vault files preview in Finder via Quick Look
+- CLI quarantine fix bundled
+
+**Bundled CLI**
+- `clip` command-line tool bundled inside the app
+- Prompts to install on first launch; also available via menu bar → Install CLI…
+
+### Bug fixes
+
+- Fixed `WindowGroup` creating a second standard window on launch — tab icons were rendering behind the native titlebar material and appearing invisible
+- Fixed paste-as-PNG producing empty files
+- Fixed Markdown preview routing between tabs
+- Fixed `@rpath` for `Sparkle.framework` so the app launches correctly when built with SPM
+- Fixed `ClipQLGenerator` excluded from SPM target (requires Developer ID to build)
+
+---
+
 ## v1.4.0 — 2026-04-09
 
 ### New features

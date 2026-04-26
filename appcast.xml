@@ -9,13 +9,13 @@
     <language>en</language>
 
     <item>
-      <title>Version 1.4.0</title>
+      <title>Version 1.5.0</title>
       <pubDate>Wed, 09 Apr 2026 00:00:00 +0000</pubDate>
       <sparkle:version>5</sparkle:version>
-      <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
+      <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <description><![CDATA[
-        <h2>What's New in Clip 1.4.0</h2>
+        <h2>What's New in Clip 1.5.0</h2>
         <ul>
           <li><strong>Recursive Search</strong> — vault search now finds assets nested inside folders at any depth</li>
           <li><strong>Markdown Files</strong> — open .md files from disk, preview rendered, import into vault with MD badge</li>
@@ -24,7 +24,7 @@
         </ul>
       ]]></description>
       <enclosure
-        url="https://github.com/blacklogos/markutils/releases/download/v1.4.0/Clip-1.4.0.dmg"
+        url="https://github.com/blacklogos/markutils/releases/download/v1.5.0/Clip-1.5.0.dmg"
         sparkle:edSignature="Stuzgli+M0kPNHo9Rdb/nNNtvD31npuCjRSGyZ6CKPAqlYCzpXUsuXdZdevbW6rjwVPA8Wp04WMj4pNdshH5Bg=="
         length="5934010"
         type="application/octet-stream" />
