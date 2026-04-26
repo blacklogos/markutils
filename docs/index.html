@@ -256,7 +256,7 @@
           <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
           <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
           <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
-          <span class="ml-auto text-xs font-mono" style="color: var(--muted);">clip &mdash; v1.3.0</span>
+          <span class="ml-auto text-xs font-mono" style="color: var(--muted);">clip &mdash; v1.5.0</span>
         </div>
         <div class="relative p-6 font-mono text-sm leading-7 overflow-x-auto">
           <button onclick="copyTerminal(this)" class="copy-btn absolute top-4 right-4 p-1.5 rounded opacity-30" style="color: var(--muted);" title="Copy">
@@ -287,7 +287,7 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
     <div class="max-w-5xl mx-auto">
       <div class="text-center mb-16">
         <h2 class="font-display text-3xl sm:text-4xl font-700 mb-4">Everything you need, one panel away</h2>
-        <p class="text-base" style="color: var(--muted);">Four tabs. No Dock icon. Always accessible from your menu bar.</p>
+        <p class="text-base" style="color: var(--muted);">Five tabs. No Dock icon. Always one click away from your menu bar.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -305,6 +305,11 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1D400;</div>
           <h3 class="font-display text-lg font-700 mb-2">Text Formatter</h3>
           <p class="text-sm leading-relaxed" style="color: var(--muted);">Unicode bold, italic, monospace, script, small caps. Convert full Markdown to social-media-ready styled text.</p>
+        </div>
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x270F;&#xFE0F;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Daily Notes</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Built-in markdown editor with keyword expansion, inline styling, and preview. Float alongside any app with ⌥A.</p>
         </div>
       </div>
     </div>
@@ -399,7 +404,64 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
         </div>
       </div>
 
-      <!-- Feature detail 4: New in 1.4 — grid of 3 -->
+      <!-- Feature detail 4: New in 1.5 — Notes Tab highlight -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-600 mb-4" style="background: rgba(var(--accent-rgb), 0.1); color: var(--accent);">New in v1.5</div>
+          <h3 class="font-display text-2xl sm:text-3xl font-700 mb-4">A notebook that travels with your tools.</h3>
+          <p class="leading-relaxed mb-4" style="color: var(--muted);">The Notes tab is a daily markdown journal built into the panel. It auto-creates a note for today, expands keywords into templates, and previews rendered markdown inline. Press ⌥A to pop the note into a floating window alongside any app.</p>
+          <ul class="space-y-2 text-sm" style="color: var(--muted);">
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Auto-creates a "today" note on first open</li>
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Keyword expansion: <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">::meeting</code> <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">::proposal</code> <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">::table</code></li>
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Inline bold, italic, headings, code, blockquotes</li>
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Floating panel (⌥A) for distraction-free writing</li>
+            <li class="flex items-start gap-2"><span style="color: var(--accent);">&#x2713;</span> Send to Transform, copy to clipboard, export as .md</li>
+          </ul>
+        </div>
+        <div class="rounded-2xl overflow-hidden border" style="background: var(--surface); border-color: var(--border);">
+          <div class="flex items-center gap-2 px-4 py-3 border-b text-xs font-mono" style="border-color: var(--border); background: var(--surface-2); color: var(--muted);">
+            <span class="w-2 h-2 rounded-full" style="background: var(--accent);"></span>
+            notes / 2026-04-26.md
+          </div>
+          <div class="p-5 font-mono text-xs leading-7 space-y-1" style="color: var(--muted);">
+            <div><span style="color: var(--accent);">#</span> <span style="color: var(--text);">Sunday, April 26</span></div>
+            <div class="h-1"></div>
+            <div><span style="color: var(--accent);">::meeting</span><span style="color: var(--muted);"> → expands template ↵</span></div>
+            <div class="h-1"></div>
+            <div><span style="color: var(--accent);">**</span>Clip v1.5 shipped<span style="color: var(--accent);">**</span> today</div>
+            <div>Notes tab works ✓</div>
+            <div>[ ] write HN post</div>
+            <div>[ ] deploy landing page</div>
+            <div class="h-1"></div>
+            <div class="flex items-center gap-3 mt-2 pt-2 border-t" style="border-color: var(--border);">
+              <span class="px-2 py-0.5 rounded text-xs" style="background: rgba(var(--accent-rgb),0.12); color: var(--accent);">Preview</span>
+              <span class="px-2 py-0.5 rounded text-xs" style="background: var(--surface-2);">Send to Transform</span>
+              <span class="px-2 py-0.5 rounded text-xs" style="background: var(--surface-2);">Export .md</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature detail 5: New in 1.5 — grid of 3 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F4CE;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Compact Titlebar</h3>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">Tab icons sit inline with the traffic lights in a 30px bar. Hover any icon for a tooltip. Theme cycle and pin-to-top live in the same row.</p>
+        </div>
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F528;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Bundled CLI</h3>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);">The <code class="font-mono text-xs px-1 py-0.5 rounded" style="background: var(--surface-2);">clip</code> binary ships inside the app. On first launch Clip prompts to install it — or use <strong>Menu bar → Install CLI…</strong> any time.</p>
+        </div>
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F441;&#xFE0F;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Quick Look</h3>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--muted);"><code class="font-mono text-xs px-1 py-0.5 rounded" style="background: var(--surface-2);">.clip</code> vault files preview directly in Finder via Quick Look — see your assets without opening the app.</p>
+        </div>
+      </div>
+
+      <!-- Feature detail: New in 1.4 — grid of 3 -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F4BE;</div>
@@ -501,7 +563,7 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
           </div>
           <div>
             <h3 class="font-display font-700 text-lg mb-1">Install the CLI (optional)</h3>
-            <p class="text-sm leading-relaxed mb-2" style="color: var(--muted);">Double-click <strong>"Install CLI.command"</strong> inside the DMG. This copies the <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">clip</code> binary to <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">/usr/local/bin</code>.</p>
+            <p class="text-sm leading-relaxed mb-2" style="color: var(--muted);">On first launch Clip prompts to install the <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">clip</code> binary to <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--surface);">/usr/local/bin</code>. You can also trigger it later via <strong>Menu bar → Install CLI…</strong></p>
             <div class="rounded-lg p-3 font-mono text-xs border" style="background: var(--surface); border-color: var(--border);">
               <span style="color: var(--accent);">$</span> clip md2html --clipboard &nbsp;&nbsp;<span style="color: var(--muted);"># transform clipboard in-place</span>
             </div>
