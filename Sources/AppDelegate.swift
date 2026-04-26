@@ -14,12 +14,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var mouseShakeDetector: MouseShakeDetector!
 
     private var globalHotkeyMonitor: Any?
+    private var notesPanelHotkeyMonitor: Any?
+    private var notesPanelLocalHotkeyMonitor: Any?
+    var notesPanel: NotesPanel?
     private var clipboardHistoryMenuItem: NSMenuItem?
 
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         checkSingleInstance()
-        
+
+        // Register default hotkey: ⌥A (keyCode 0, modifier .option).
+        // To change: UserDefaults.standard.set(newKeyCode, forKey: "notesHotkeyKeyCode")
+        //            UserDefaults.standard.set(Int(NSEvent.ModifierFlags.option.rawValue), forKey: "notesHotkeyModifiers")
+        UserDefaults.standard.register(defaults: [
+            "notesHotkeyKeyCode": 0,
+            "notesHotkeyModifiers": Int(NSEvent.ModifierFlags.option.rawValue)
+        ])
+
         // Hide Dock Icon
         NSApp.setActivationPolicy(.accessory)
         
@@ -35,6 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Setup Menu
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Open Clip", action: #selector(togglePanel), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "Open Notes  ⌥A", action: #selector(toggleNotesPanel), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
 
         // Theme Submenu
@@ -72,6 +84,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         checkForUpdatesItem.target = updaterController
         menu.addItem(checkForUpdatesItem)
         menu.addItem(NSMenuItem(title: "Install CLI…", action: #selector(installCLIFromMenu), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Keyword Reference", action: #selector(showKeywordReference), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Send Feedback", action: #selector(sendFeedback), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -93,21 +106,51 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async { self?.togglePanel() }
         }
 
+        // Notes panel hotkey — fires when OTHER apps are in focus
+        notesPanelHotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard self?.matchesNotesHotkey(event) == true else { return }
+            DispatchQueue.main.async { self?.toggleNotesPanel() }
+        }
+        // Notes panel hotkey — fires when Clip itself is active (needed to dismiss panel)
+        // Does not intercept when a text field/editor has focus to avoid eating typed characters.
+        notesPanelLocalHotkeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard self?.matchesNotesHotkey(event) == true else { return event }
+            let firstResponder = NSApp.keyWindow?.firstResponder
+            if firstResponder is NSTextView || firstResponder is NSTextField { return event }
+            DispatchQueue.main.async { self?.toggleNotesPanel() }
+            return nil
+        }
+
         // Offer CLI install on first launch
         offerCLIInstallIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        if let monitor = globalHotkeyMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
+        if let monitor = globalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
+        if let monitor = notesPanelHotkeyMonitor { NSEvent.removeMonitor(monitor) }
+        if let monitor = notesPanelLocalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         ClipboardMonitor.shared.stopMonitoring()
+        NoteStore.shared.flushPendingSave()
+    }
+
+    // Reads hotkey config from UserDefaults so the combination can be changed at runtime.
+    // Requires at least one modifier key to prevent capturing unmodified keystrokes globally.
+    private func matchesNotesHotkey(_ event: NSEvent) -> Bool {
+        let keyCode = UInt16(UserDefaults.standard.integer(forKey: "notesHotkeyKeyCode"))
+        let mods = NSEvent.ModifierFlags(rawValue: UInt(UserDefaults.standard.integer(forKey: "notesHotkeyModifiers")))
+        let validModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        guard !mods.intersection(validModifiers).isEmpty else { return false }
+        return event.modifierFlags.intersection(validModifiers) == mods && event.keyCode == keyCode
     }
     
     private func createFloatingPanel() {
         let contentView = ContentView()
         
-        let viewWithModel = AnyView(contentView.environment(AssetStore.shared))
+        let viewWithModel = AnyView(
+            contentView
+                .environment(AssetStore.shared)
+                .environment(NoteStore.shared)
+        )
         
         let hostingController = NSHostingController(rootView: viewWithModel)
         
@@ -158,6 +201,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             NSWorkspace.shared.open(url)
         }
     }
+
+    private var keywordReferencePanel: NSPanel?
+
+    @objc func showKeywordReference() {
+        if keywordReferencePanel == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
+                styleMask: [.titled, .closable, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Keyword Reference"
+            panel.level = .floating
+            panel.isReleasedWhenClosed = false
+            panel.contentViewController = NSHostingController(rootView: KeywordReferenceView())
+            panel.center()
+            keywordReferencePanel = panel
+        }
+        keywordReferencePanel?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
     
     // NSWindowDelegate - Handle window closing (red x button)
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -171,6 +235,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             floatingPanel.makeKeyAndOrderFront(nil)
         }
         NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    private func createNotesPanel() {
+        let panel = NotesPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 480),
+            backing: .buffered,
+            defer: false
+        )
+        let rootView = MinimalNotesView(
+            onClose:    { [weak panel] in panel?.orderOut(nil) },
+            onMinimize: { [weak panel] in panel?.miniaturize(nil) },
+            onZoom:     { [weak panel] in panel?.zoom(nil) }
+        )
+        .environment(NoteStore.shared)
+        .environment(AssetStore.shared)
+        panel.contentViewController = NSHostingController(rootView: rootView)
+        panel.center()
+        panel.delegate = self
+        panel.isReleasedWhenClosed = false
+        notesPanel = panel
+    }
+
+    @objc func toggleNotesPanel() {
+        if notesPanel == nil { createNotesPanel() }
+        guard let panel = notesPanel else { return }
+        if panel.isVisible {
+            panel.orderOut(nil)
+        } else {
+            panel.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
     }
     
     // MARK: - Export / Import
@@ -217,11 +312,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         do {
             let data = try Data(contentsOf: url)
             let assets = try JSONDecoder().decode([Asset].self, from: data)
-            AssetStore.shared.assets = assets
+            // Backup existing vault before replacing — recoverable from <assets.json>.bak
+            AssetStore.shared.backupAndImport(assets)
         } catch {
             let alert = NSAlert()
             alert.messageText = "Import Failed"
-            alert.informativeText = "Invalid backup file: \(error.localizedDescription)"
+            alert.informativeText = "Invalid backup file."
             alert.alertStyle = .critical
             alert.runModal()
         }
@@ -271,9 +367,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         installCLI(from: bundledCLI)
     }
 
+    // POSIX single-quote escaping: surround with ' and escape embedded ' as '\''
+    private func shellQuotedPath(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
     private func installCLI(from sourcePath: String) {
         let dest = "/usr/local/bin/clip"
-        let script = "mkdir -p /usr/local/bin && cp '\(sourcePath)' '\(dest)' && chmod +x '\(dest)' && xattr -rd com.apple.quarantine '\(dest)'"
+        let qSrc = shellQuotedPath(sourcePath)
+        let qDst = shellQuotedPath(dest)
+        let script = "mkdir -p /usr/local/bin && cp \(qSrc) \(qDst) && chmod +x \(qDst) && xattr -rd com.apple.quarantine \(qDst)"
 
         let appleScript = NSAppleScript(source: "do shell script \"\(script)\" with administrator privileges")
         var error: NSDictionary?

@@ -30,9 +30,10 @@
 | # | File | Status |
 |---|------|--------|
 | 1 | [phase-01-branding-decision.md](phase-01-branding-decision.md) | pending |
-| 2 | [phase-02-package-restructure.md](phase-02-package-restructure.md) | pending |
+| 2 | [phase-02-package-restructure.md](phase-02-package-restructure.md) | complete |
 | 3 | [phase-03-cli-commands.md](phase-03-cli-commands.md) | pending |
 | 4 | [phase-04-install-and-docs.md](phase-04-install-and-docs.md) | pending |
+| 5 | [phase-05-export-import.md](phase-05-export-import.md) | pending |
 
 ---
 

@@ -59,3 +59,12 @@ enum AssetType: String, Codable {
     case image
     case folder
 }
+
+extension Asset {
+    // True for SVG text assets — checks both <svg and <?xml…<svg to avoid matching RSS/plist.
+    var isSVG: Bool {
+        guard type == .text, let text = textContent else { return false }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("<svg") || (trimmed.hasPrefix("<?xml") && trimmed.contains("<svg"))
+    }
+}

@@ -254,8 +254,7 @@ struct AssetGridView: View {
             }
         } else if asset.type == .text, let text = asset.textContent {
             // Register SVG type for drag-out to design tools
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.hasPrefix("<svg") || trimmed.hasPrefix("<?xml") {
+            if asset.isSVG {
                 provider.registerDataRepresentation(forTypeIdentifier: "public.svg-image", visibility: .all) { completion in
                     completion(text.data(using: .utf8), nil)
                     return nil
@@ -412,11 +411,7 @@ struct AssetGridView: View {
     private func pasteAsPNG() {
         let pb = NSPasteboard.general
         guard let objects = pb.readObjects(forClasses: [NSImage.self], options: nil),
-              let image = objects.first as? NSImage,
-              let tiff = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff),
-              let png = bitmap.representation(using: .png, properties: [:]),
-              !png.isEmpty else {
+              let image = objects.first as? NSImage else {
             let alert = NSAlert()
             alert.messageText = "Nothing to paste"
             alert.informativeText = "Clipboard doesn't contain an image."
@@ -424,8 +419,15 @@ struct AssetGridView: View {
             alert.runModal()
             return
         }
-        let asset = Asset(type: .image, imageData: png, name: "Pasted Image")
-        store.add(asset)
+        // Convert off main thread — large retina screenshots can take 200-500ms
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let tiff = image.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: tiff),
+                  let png = bitmap.representation(using: .png, properties: [:]),
+                  !png.isEmpty else { return }
+            let asset = Asset(type: .image, imageData: png, name: "Pasted Image")
+            DispatchQueue.main.async { AssetStore.shared.add(asset) }
+        }
     }
 
     private func createAsset(from url: URL) -> Asset? {
@@ -496,6 +498,7 @@ struct AssetItemView: View {
     @State private var showCopiedFeedback = false
     @State private var isRenaming = false
     @State private var editName = ""
+    @State private var confirmDelete = false
 
     private var displayName: String {
         asset.name ?? (asset.type == .text ? String(asset.textContent?.prefix(20) ?? "Text") : "Image")
@@ -567,7 +570,7 @@ struct AssetItemView: View {
                         VStack {
                             HStack {
                                 Spacer()
-                                Button(action: deleteAsset) {
+                                Button { confirmDelete = true } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundStyle(.white)
@@ -619,7 +622,7 @@ struct AssetItemView: View {
         .contentShape(Rectangle())
         .contextMenu {
             Button("Copy") { copyAsset() }
-            if isSVGAsset {
+            if asset.isSVG {
                 Button("Copy as SVG") { copyAsset() }
             }
             if isMarkdownAsset {
@@ -631,12 +634,18 @@ struct AssetItemView: View {
             }
             Divider()
             Button("Rename") { startRename() }
-            Button("Delete", role: .destructive) { deleteAsset() }
+            Button("Delete", role: .destructive) { confirmDelete = true }
         }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
             }
+        }
+        .alert("Delete asset?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { deleteAsset() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 
@@ -652,12 +661,6 @@ struct AssetItemView: View {
         isRenaming = false
     }
 
-    private var isSVGAsset: Bool {
-        guard asset.type == .text, let text = asset.textContent else { return false }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.hasPrefix("<svg") || trimmed.hasPrefix("<?xml")
-    }
-
     private func copyAsset() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -665,7 +668,7 @@ struct AssetItemView: View {
         if asset.type == .image, let data = asset.imageData {
             pasteboard.setData(data, forType: .png)
         } else if asset.type == .text, let text = asset.textContent {
-            if isSVGAsset {
+            if asset.isSVG {
                 pasteboard.setString(text, forType: NSPasteboard.PasteboardType("public.svg-image"))
             }
             pasteboard.setString(text, forType: .string)
@@ -709,6 +712,7 @@ struct CompactAssetRowView: View {
     @State private var showCopiedFeedback = false
     @State private var isRenaming = false
     @State private var editName = ""
+    @State private var confirmDelete = false
 
     private var isClipboardItem: Bool { asset.name?.hasPrefix("Clipboard ") == true }
 
@@ -763,7 +767,7 @@ struct CompactAssetRowView: View {
                     .buttonStyle(.plain)
                     .help("Copy to Clipboard")
 
-                    Button(action: deleteAsset) {
+                    Button { confirmDelete = true } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.red.opacity(0.8))
                     }
@@ -781,6 +785,12 @@ struct CompactAssetRowView: View {
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
             }
+        }
+        .alert("Delete asset?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { deleteAsset() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 
@@ -802,12 +812,6 @@ struct CompactAssetRowView: View {
         isRenaming = false
     }
     
-    private var isSVGAsset: Bool {
-        guard asset.type == .text, let text = asset.textContent else { return false }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.hasPrefix("<svg") || trimmed.hasPrefix("<?xml")
-    }
-
     private func copyAsset() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -815,7 +819,7 @@ struct CompactAssetRowView: View {
         if asset.type == .image, let data = asset.imageData {
             pasteboard.setData(data, forType: .png)
         } else if asset.type == .text, let text = asset.textContent {
-            if isSVGAsset {
+            if asset.isSVG {
                 pasteboard.setString(text, forType: NSPasteboard.PasteboardType("public.svg-image"))
             }
             pasteboard.setString(text, forType: .string)

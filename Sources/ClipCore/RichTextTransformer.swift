@@ -305,10 +305,13 @@ public struct RichTextTransformer {
     // MARK: - Inline parsing (shared by markdownToHTML helpers)
 
     public static func parseInline(_ text: String) -> String {
-        var result = text
+        // Escape raw text first to prevent XSS via <script>, <img onerror=>, etc.
+        var result = htmlEscape(text)
 
         // Links ([text](url)) — must be before bold/italic to avoid mangling URLs
         result = result.replacingOccurrences(of: "\\[([^\\]]+)\\]\\(([^)]+)\\)", with: "<a href=\"$2\" target=\"_blank\">$1</a>", options: .regularExpression)
+        // Strip non-http/mailto hrefs to prevent javascript: URI injection
+        result = result.replacingOccurrences(of: " href=\"(?!https?://|mailto:)[^\"]*\"", with: " href=\"#\"", options: .regularExpression)
 
         // Bold (**text**) — allow any content inside including already-parsed HTML
         result = result.replacingOccurrences(of: "\\*\\*(.+?)\\*\\*", with: "<strong>$1</strong>", options: .regularExpression)
@@ -321,5 +324,15 @@ public struct RichTextTransformer {
         result = result.replacingOccurrences(of: "`([^`]+)`", with: "<code>$1</code>", options: .regularExpression)
 
         return result
+    }
+
+    // Escapes the five HTML-sensitive characters so user content cannot inject tags.
+    public static func htmlEscape(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#x27;")
     }
 }

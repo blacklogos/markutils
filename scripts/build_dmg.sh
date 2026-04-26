@@ -3,8 +3,8 @@
 # Configuration
 APP_NAME="Clip"
 BUILD_DIR=".build/release"
-VERSION="1.4.0"
-BUILD_NUMBER="5"
+VERSION="1.5.0"
+BUILD_NUMBER="6"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 APP_BUNDLE="${APP_NAME}.app"
 DMG_STAGING="dmg_staging"
@@ -107,11 +107,12 @@ echo "🔏 Signing app (Ad-hoc)..."
 codesign --force --deep --sign - "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework" 2>/dev/null
 codesign --force --deep --sign - "${APP_BUNDLE}"
 
-# 7. Stage DMG contents: app only (CLI is bundled inside Clip.app/Contents/Resources/clip)
+# 7. Stage DMG contents: app + /Applications symlink for drag-to-install UX
 echo "📁 Staging DMG contents..."
 rm -rf "${DMG_STAGING}"
 mkdir -p "${DMG_STAGING}"
 cp -r "${APP_BUNDLE}" "${DMG_STAGING}/"
+ln -s /Applications "${DMG_STAGING}/Applications"
 
 # 8. Strip quarantine from all staged files (prevents Gatekeeper blocks on DMG contents)
 echo "🛡️  Stripping quarantine attributes..."

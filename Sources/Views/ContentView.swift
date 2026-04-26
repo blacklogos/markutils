@@ -7,7 +7,6 @@ struct ContentView: View {
     @State private var socialInput = ""
     @State private var showOnboarding = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
-    @State private var snippetStore = SnippetStore.shared
     @State private var previewRouter = MarkdownPreviewRouter.shared
     
     enum AppTheme: String, CaseIterable, Identifiable {
@@ -34,13 +33,13 @@ struct ContentView: View {
                 Spacer().frame(width: 72)
 
                 Picker("Tabs", selection: $selectedTab) {
-                    Image(systemName: "square.grid.2x2")  .tag(0).help("Assets")
+                    Image(systemName: "square.grid.2x2")      .tag(0).help("Assets")
                     Image(systemName: "arrow.left.arrow.right").tag(1).help("Transform")
-                    Image(systemName: "textformat.abc")   .tag(2).help("Text Formatter")
-                    Image(systemName: "doc.text")         .tag(3).help("Snippets")
+                    Image(systemName: "textformat.abc")        .tag(2).help("Text Formatter")
+                    Image(systemName: "square.and.pencil")     .tag(3).help("Notes")
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 180)
+                .frame(width: 220)
 
                 Spacer() // draggable gap
 
@@ -79,8 +78,7 @@ struct ContentView: View {
                 case 2:
                     SocialMediaFormatterView(text: $socialInput)
                 case 3:
-                    SnippetsView()
-                        .environment(snippetStore)
+                    NotesView()
                 default:
                     Text("Unknown Tab")
                 }
@@ -104,6 +102,8 @@ struct ContentView: View {
                 selectedTab = 1 // Switch to Transform tab
             }
         }
+        // Absorb ⌘N so the system never opens a new document window.
+        .background(Button("") {}.keyboardShortcut("n", modifiers: .command).hidden())
         .background(WindowAccessor { window in
             guard let window = window else { return }
             window.titleVisibility = .hidden

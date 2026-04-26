@@ -6,7 +6,8 @@ struct FolderRowView: View {
     @Environment(AssetStore.self) private var store
     @State private var isExpanded = false
     @State private var isHovering = false
-    
+    @State private var confirmDelete = false
+
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             if let children = folder.children, !children.isEmpty {
@@ -48,7 +49,7 @@ struct FolderRowView: View {
                 Spacer()
                 
                 if isHovering {
-                    Button(action: { store.delete(folder) }) {
+                    Button { confirmDelete = true } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.red)
                     }
@@ -63,5 +64,11 @@ struct FolderRowView: View {
             }
         }
         .padding(.horizontal)
+        .alert("Delete folder?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { store.delete(folder) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will delete the folder and all its contents. This cannot be undone.")
+        }
     }
 }
