@@ -176,7 +176,7 @@ public struct RichTextTransformer {
 
     // Renders a block of | -prefixed lines as an HTML table.
     // First non-separator row(s) → <thead>, separator row (---|---) marks the split, rest → <tbody>.
-    public static func renderMarkdownTable(_ lines: [String]) -> String {
+    static func renderMarkdownTable(_ lines: [String]) -> String {
         var headerLines: [String] = []
         var bodyLines: [String] = []
         var separatorFound = false
@@ -224,7 +224,7 @@ public struct RichTextTransformer {
         return html
     }
 
-    public static func parseTableRow(_ line: String) -> [String] {
+    static func parseTableRow(_ line: String) -> [String] {
         line.trimmingCharacters(in: .whitespaces)
             .split(separator: "|", omittingEmptySubsequences: false)
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -330,7 +330,7 @@ public struct RichTextTransformer {
         return markdown.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    public static func decodeHTMLEntities(_ text: String) -> String {
+    static func decodeHTMLEntities(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&lt;", with: "<")
             .replacingOccurrences(of: "&gt;", with: ">")
@@ -466,7 +466,7 @@ public struct RichTextTransformer {
     }
 
     // Escapes the five HTML-sensitive characters so user content cannot inject tags.
-    public static func htmlEscape(_ text: String) -> String {
+    static func htmlEscape(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

@@ -98,33 +98,4 @@ extension RichTextTransformer {
 
         return result
     }
-
-    // MARK: - Rich Text to Markdown
-
-    static func richTextToMarkdown(_ attributedString: NSAttributedString) -> String {
-        var markdown = ""
-        let string = attributedString.string
-
-        attributedString.enumerateAttributes(in: NSRange(location: 0, length: attributedString.length), options: []) { attributes, range, _ in
-            let substring = (string as NSString).substring(with: range)
-
-            if let font = attributes[.font] as? NSFont {
-                if font.pointSize >= 20 && font.fontDescriptor.symbolicTraits.contains(.bold) {
-                    markdown += font.pointSize >= 24 ? "# \(substring)" : "## \(substring)"
-                } else if font.fontDescriptor.symbolicTraits.contains(.bold) {
-                    markdown += "**\(substring)**"
-                } else if font.fontDescriptor.symbolicTraits.contains(.italic) {
-                    markdown += "*\(substring)*"
-                } else if font.familyName?.contains("Mono") == true || font.familyName?.contains("Courier") == true {
-                    markdown += "`\(substring)`"
-                } else {
-                    markdown += substring
-                }
-            } else {
-                markdown += substring
-            }
-        }
-
-        return markdown
-    }
 }

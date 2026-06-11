@@ -280,23 +280,16 @@ struct QuickActionsView: View {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        if let mdType = UTType(filenameExtension: "md") {
-            panel.allowedContentTypes = [mdType, .plainText]
-        } else {
-            panel.allowedContentTypes = [.plainText]
-        }
+        panel.allowedContentTypes = MarkdownDocumentStore.markdownExtensions
+            .sorted()
+            .compactMap { UTType(filenameExtension: $0) }
 
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard panel.runModal() == .OK, let url = panel.url,
+              let text = MarkdownDocumentStore.readText(url) else { return }
 
-        do {
-            let text = try String(contentsOf: url, encoding: .utf8)
-            input = text
-            output = ""
-            outputMode = .htmlPreview
-        } catch {
-            let alert = NSAlert(error: error)
-            alert.runModal()
-        }
+        input = text
+        output = ""
+        outputMode = .htmlPreview
     }
 
     private func pasteFromClipboard() {
@@ -306,15 +299,13 @@ struct QuickActionsView: View {
     }
 
     private func copyText(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        Pasteboard.copy(text)
         flash()
     }
 
     private func copyRichText() {
         let attrStr = RichTextTransformer.markdownToRichText(input)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects([attrStr])
+        Pasteboard.copy(attrStr)
         flash()
     }
 

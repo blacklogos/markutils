@@ -373,8 +373,7 @@ struct MinimalNotesView: View {
 
     private func copyToClipboard() {
         guard let body = selectedNote?.body else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(body, forType: .string)
+        Pasteboard.copy(body)
     }
 
     private func exportNote() {

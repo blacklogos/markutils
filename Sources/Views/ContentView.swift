@@ -1,8 +1,38 @@
 import SwiftUI
 
+/// The five tools, in titlebar order. Single source of truth for icons,
+/// tooltips, ⌘-number shortcuts, and routing targets — add a case here and
+/// every tab surface updates together.
+enum AppTab: Int, CaseIterable {
+    case assets, reader, transform, format, notes
+
+    var icon: String {
+        switch self {
+        case .assets:    return "square.grid.2x2"
+        case .reader:    return "book.pages"
+        case .transform: return "arrow.left.arrow.right"
+        case .format:    return "textformat.abc"
+        case .notes:     return "square.and.pencil"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .assets:    return "Assets"
+        case .reader:    return "Reader"
+        case .transform: return "Transform"
+        case .format:    return "Text Formatter"
+        case .notes:     return "Notes"
+        }
+    }
+
+    var shortcut: KeyEquivalent { KeyEquivalent(Character("\(rawValue + 1)")) }
+    var tooltip: String { "\(title) ⌘\(rawValue + 1)" }
+}
+
 struct ContentView: View {
     @AppStorage("appTheme") private var appTheme: AppTheme = .system
-    @State private var selectedTab = 0
+    @State private var selectedTab: AppTab = .assets
     @State private var isPinned = true
     @State private var socialInput = ""
     @State private var showOnboarding = false
@@ -41,14 +71,14 @@ struct ContentView: View {
         .onAppear {
             if !hasSeenOnboarding { showOnboarding = true }
             // App was launched by opening a document — land on the Reader tab.
-            if documentStore.externalOpenCount > 0 { selectedTab = 1 }
+            if documentStore.externalOpenCount > 0 { selectedTab = .reader }
         }
         .onChange(of: previewRouter.pendingText) { _, newValue in
-            if newValue != nil { selectedTab = 2 }
+            if newValue != nil { selectedTab = .transform }
         }
         // Finder "Open With Clip" (or drag onto the app) routes to the Reader tab.
         .onChange(of: documentStore.externalOpenCount) { _, _ in
-            selectedTab = 1
+            selectedTab = .reader
         }
         // Absorb ⌘N so the system never opens a new document window.
         .background(Button("") {}.keyboardShortcut("n", modifiers: .command).hidden())
@@ -65,12 +95,9 @@ struct ContentView: View {
         HStack(spacing: 0) {
             Color.clear.frame(width: 8) // left breathing room
 
-            // Tab icons
-            tabIcon(0, icon: "square.grid.2x2",        tooltip: "Assets ⌘1")
-            tabIcon(1, icon: "book.pages",              tooltip: "Reader ⌘2")
-            tabIcon(2, icon: "arrow.left.arrow.right",  tooltip: "Transform ⌘3")
-            tabIcon(3, icon: "textformat.abc",           tooltip: "Text Formatter ⌘4")
-            tabIcon(4, icon: "square.and.pencil",        tooltip: "Notes ⌘5")
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                tabIcon(tab)
+            }
 
             Spacer() // draggable gap
 
@@ -95,36 +122,35 @@ struct ContentView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case 0: AssetGridView()
-        case 1: MarkdownReaderView()
-        case 2: QuickActionsView()
-        case 3: SocialMediaFormatterView(text: $socialInput)
-        case 4: NotesView()
-        default: AssetGridView()
+        case .assets:    AssetGridView()
+        case .reader:    MarkdownReaderView()
+        case .transform: QuickActionsView()
+        case .format:    SocialMediaFormatterView(text: $socialInput)
+        case .notes:     NotesView()
         }
     }
 
     private var tabShortcuts: some View {
-        ForEach(0..<5) { tab in
+        ForEach(AppTab.allCases, id: \.self) { tab in
             Button("") { selectedTab = tab }
-                .keyboardShortcut(KeyEquivalent(Character("\(tab + 1)")), modifiers: .command)
+                .keyboardShortcut(tab.shortcut, modifiers: .command)
                 .hidden()
         }
     }
 
     // MARK: - Button helpers
 
-    private func tabIcon(_ tag: Int, icon: String, tooltip: String) -> some View {
-        let isSelected = selectedTab == tag
-        return Button { selectedTab = tag } label: {
-            Image(systemName: icon)
+    private func tabIcon(_ tab: AppTab) -> some View {
+        let isSelected = selectedTab == tab
+        return Button { selectedTab = tab } label: {
+            Image(systemName: tab.icon)
                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? AppColors.accent : Color.secondary)
                 .frame(width: 30, height: 30)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(tooltip)
+        .help(tab.tooltip)
     }
 
     private func toolbarButton(icon: String, tint: Color?, tooltip: String, action: @escaping () -> Void) -> some View {

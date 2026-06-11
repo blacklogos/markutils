@@ -281,8 +281,7 @@ struct SocialMediaFormatterView: View {
     }
     
     private func copyText() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        Pasteboard.copy(text)
         
         withAnimation { showCopied = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {

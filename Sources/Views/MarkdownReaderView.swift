@@ -52,11 +52,11 @@ struct MarkdownReaderView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // ⌘O / ⌘⇧O are registered once, on the view root — these
+                // buttons are the visible affordance for the same actions.
                 HStack(spacing: 10) {
                     Button("Open File…") { Self.presentOpenDialog(directories: false) }
-                        .keyboardShortcut("o", modifiers: .command)
                     Button("Open Folder…") { Self.presentOpenDialog(directories: true) }
-                        .keyboardShortcut("o", modifiers: [.command, .shift])
                 }
                 .controlSize(.regular)
 
@@ -178,52 +178,13 @@ struct MarkdownReaderView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     ForEach(store.fileTree) { node in
-                        fileTreeRow(node, depth: 0)
+                        FileTreeRow(node: node, depth: 0)
                     }
                 }
                 .padding(6)
             }
         }
         .background(AppColors.editorBackground)
-    }
-
-    @ViewBuilder
-    private func fileTreeRow(_ node: MarkdownFileNode, depth: Int) -> some View {
-        if node.isDirectory {
-            FileTreeFolderRow(node: node, depth: depth) { child, childDepth in
-                AnyView(fileTreeRow(child, depth: childDepth))
-            }
-        } else {
-            fileRow(node, depth: depth)
-        }
-    }
-
-    private func fileRow(_ node: MarkdownFileNode, depth: Int) -> some View {
-        let isSelected = store.currentFileURL == node.url
-        return Button {
-            store.openFile(node.url)
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 10))
-                    .foregroundStyle(isSelected ? AppColors.accent : Color.secondary)
-                Text(node.name)
-                    .font(.system(size: 11.5, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? AppColors.textPrimary : Color.primary.opacity(0.85))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, CGFloat(depth) * 12 + 6)
-            .padding(.trailing, 6)
-            .padding(.vertical, 3.5)
-            .background(
-                RoundedRectangle(cornerRadius: 5)
-                    .fill(isSelected ? AppColors.activeTab : Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(node.url.path)
     }
 
     // MARK: - Preview header
@@ -264,8 +225,7 @@ struct MarkdownReaderView: View {
             }
             headerButton(icon: "doc.richtext", tooltip: "Copy as Rich Text") {
                 let attrStr = RichTextTransformer.markdownToRichText(store.fileContent)
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.writeObjects([attrStr])
+                Pasteboard.copy(attrStr)
                 flashCopied()
             }
             if let url = store.currentFileURL {
@@ -325,8 +285,7 @@ struct MarkdownReaderView: View {
     // MARK: - Clipboard
 
     private func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        Pasteboard.copy(text)
         flashCopied()
     }
 
@@ -357,16 +316,25 @@ struct MarkdownReaderView: View {
     }
 }
 
-/// Collapsible folder row used by the Reader sidebar tree.
-/// Separate struct so each folder keeps its own expansion state.
-private struct FileTreeFolderRow: View {
+/// One row of the Reader sidebar tree — a selectable file, or a collapsible
+/// folder that renders its children by direct recursion. A separate struct so
+/// each folder keeps its own expansion state.
+private struct FileTreeRow: View {
     let node: MarkdownFileNode
     let depth: Int
-    let childRow: (MarkdownFileNode, Int) -> AnyView
 
+    @State private var store = MarkdownDocumentStore.shared
     @State private var isExpanded = true
 
     var body: some View {
+        if node.isDirectory {
+            folderRow
+        } else {
+            fileRow
+        }
+    }
+
+    private var folderRow: some View {
         VStack(alignment: .leading, spacing: 1) {
             Button {
                 withAnimation(.easeInOut(duration: 0.12)) { isExpanded.toggle() }
@@ -393,10 +361,38 @@ private struct FileTreeFolderRow: View {
 
             if isExpanded {
                 ForEach(node.children ?? []) { child in
-                    childRow(child, depth + 1)
+                    FileTreeRow(node: child, depth: depth + 1)
                 }
             }
         }
+    }
+
+    private var fileRow: some View {
+        let isSelected = store.currentFileURL == node.url
+        return Button {
+            store.openFile(node.url)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 10))
+                    .foregroundStyle(isSelected ? AppColors.accent : Color.secondary)
+                Text(node.name)
+                    .font(.system(size: 11.5, weight: isSelected ? .medium : .regular))
+                    .foregroundStyle(isSelected ? AppColors.textPrimary : Color.primary.opacity(0.85))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, CGFloat(depth) * 12 + 6)
+            .padding(.trailing, 6)
+            .padding(.vertical, 3.5)
+            .background(
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(isSelected ? AppColors.activeTab : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(node.url.path)
     }
 }
 

@@ -78,15 +78,6 @@ class SnippetStore {
         snippets.removeAll { $0.id == snippet.id }
     }
 
-    func duplicate(_ snippet: Snippet) {
-        let copy = Snippet(
-            name: "\(snippet.name) Copy",
-            content: snippet.content,
-            category: snippet.category,
-            isBuiltIn: false
-        )
-        snippets.append(copy)
-    }
 
     private func save() {
         do {

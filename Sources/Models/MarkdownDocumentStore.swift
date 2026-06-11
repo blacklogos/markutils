@@ -131,9 +131,9 @@ final class MarkdownDocumentStore {
         return true
     }
 
-    /// Single read path (UTF-8 with UTF-16/Latin-1 fallback) shared by opening
-    /// and live reload.
-    private static func readText(_ url: URL) -> String? {
+    /// Single read path (UTF-8 with UTF-16/Latin-1 fallback) shared by opening,
+    /// live reload, and the Transform tab's file import.
+    static func readText(_ url: URL) -> String? {
         if let text = try? String(contentsOf: url, encoding: .utf8) { return text }
         guard let data = try? Data(contentsOf: url) else { return nil }
         return String(data: data, encoding: .utf16) ?? String(data: data, encoding: .isoLatin1)
@@ -191,11 +191,6 @@ final class MarkdownDocumentStore {
         if !currentInsideTree, let first = Self.firstFile(in: tree) {
             openFile(first.url)
         }
-    }
-
-    func reloadCurrentFile() {
-        guard let url = currentFileURL else { return }
-        openFile(url)
     }
 
     func closeAll() {

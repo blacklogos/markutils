@@ -76,8 +76,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         }
         override func copy(_ sender: Any?) {
             let sel = (string as NSString).substring(with: selectedRange())
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(sel, forType: .string)
+            Pasteboard.copy(sel)
         }
         override func cut(_ sender: Any?) {
             copy(sender)

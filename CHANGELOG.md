@@ -44,6 +44,17 @@ All notable changes to Clip are documented here.
 - Preview WebViews skip identical reloads, preserving scroll position during UI state changes
 - Markdown is rendered once per content change (cached in the store) instead of on every view update
 
+### Lean & clean
+- Removed dead code: `TransformerView` (superseded by the Transform tab), `VisualEffectView`,
+  `richTextToMarkdown`, `SnippetStore.duplicate`, `reloadCurrentFile` (~340 lines)
+- One shared stylesheet (`MarkdownPreviewStyle`) for every markdown WebView — the Notes preview
+  now matches the Reader/Transform rendering exactly
+- One `Pasteboard.copy` helper replaces eight hand-rolled pasteboard writes across the views
+- `AppTab` enum is the single source of truth for tab icons, titles, ⌘-shortcuts, and routing
+- Reader sidebar tree renders by direct recursion (dropped the AnyView closure indirection)
+- ClipCore's internal helpers are no longer public API; file-open dialogs derive their allowed
+  types from the store's canonical extension list
+
 ---
 
 ## v1.5.0 — 2026-04-26
