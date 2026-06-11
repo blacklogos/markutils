@@ -86,7 +86,7 @@ struct MinimalNotesView: View {
                 if isPreview {
                     CheckableHTMLPreviewView(
                         html: RichTextTransformer.markdownToHTML(note.body)
-                    ) { idx, checked in toggleCheckbox(in: note, at: idx, checked: checked) }
+                    ) { line, checked in toggleCheckbox(in: note, line: line, checked: checked) }
                 } else {
                     MarkdownTextEditor(text: Binding(
                         get: { note.body },
@@ -409,19 +409,15 @@ struct MinimalNotesView: View {
 
     // MARK: - Checkbox toggle
 
-    private func toggleCheckbox(in note: Note, at index: Int, checked: Bool) {
+    // Line number comes from the data-line attribute markdownToHTML stamps on
+    // each task checkbox — toggles the exact source line, no counting.
+    private func toggleCheckbox(in note: Note, line: Int, checked: Bool) {
         var lines = note.body.components(separatedBy: "\n")
-        var count = 0
-        for (i, line) in lines.enumerated() {
-            let t = line.trimmingCharacters(in: .whitespaces)
-            guard t.hasPrefix("- [ ]") || t.hasPrefix("- [x]") || t.hasPrefix("- [X]") else { continue }
-            if count == index {
-                if checked, let r = lines[i].range(of: "- [ ]") { lines[i].replaceSubrange(r, with: "- [x]") }
-                else if !checked, let r = lines[i].range(of: "- [x]", options: .caseInsensitive) { lines[i].replaceSubrange(r, with: "- [ ]") }
-                break
-            }
-            count += 1
-        }
+        guard lines.indices.contains(line) else { return }
+        let t = lines[line].trimmingCharacters(in: .whitespaces)
+        guard t.hasPrefix("- [") || t.hasPrefix("* [") else { return }
+        if checked, let r = lines[line].range(of: "[ ]") { lines[line].replaceSubrange(r, with: "[x]") }
+        else if !checked, let r = lines[line].range(of: "[x]", options: .caseInsensitive) { lines[line].replaceSubrange(r, with: "[ ]") }
         note.body = lines.joined(separator: "\n")
         note.updatedAt = Date()
         NoteStore.shared.save()

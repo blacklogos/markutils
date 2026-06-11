@@ -77,8 +77,27 @@ final class MarkdownToHTMLTests: XCTestCase {
         let md = "- [ ] todo\n- [x] done"
         let html = RichTextTransformer.markdownToHTML(md)
 
-        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled> todo</li>"))
-        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled checked> done</li>"))
+        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled data-line=\"0\"> todo</li>"))
+        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled data-line=\"1\" checked> done</li>"))
+    }
+
+    func testTaskCheckboxDataLineSkipsFenceContent() {
+        // Task syntax inside a code fence renders as code, and the real task
+        // below must carry its ORIGINAL line number so toggles hit that line.
+        let md = "```\n- [ ] fake task in code\n```\n- [ ] real task"
+        let html = RichTextTransformer.markdownToHTML(md)
+
+        XCTAssertEqual(html.components(separatedBy: "type=\"checkbox\"").count - 1, 1,
+                       "Only the real task gets a checkbox")
+        XCTAssertTrue(html.contains("data-line=\"3\""), "Checkbox maps to source line 3")
+    }
+
+    func testTaskCheckboxDataLineAccountsForFrontmatter() {
+        let md = "---\ntitle: x\n---\n- [ ] task"
+        let html = RichTextTransformer.markdownToHTML(md)
+
+        XCTAssertTrue(html.contains("data-line=\"3\""),
+                      "Frontmatter offset must be added back to the source line index")
     }
 
     func testPlainListItemsUnaffectedByTaskSyntax() {
@@ -111,6 +130,71 @@ final class MarkdownToHTMLTests: XCTestCase {
     func testExtractFrontmatterReturnsNilWithoutClosingFence() {
         let lines = ["---", "title: x", "body continues"]
         XCTAssertNil(RichTextTransformer.extractFrontmatter(lines))
+    }
+
+    func testFrontmatterRejectsMixedProseBetweenRules() {
+        // A changelog that opens with an hr: one 'key:'-looking line is not
+        // enough — non-YAML lines like '## v1.5' must veto the frontmatter.
+        let md = "---\n\n## v1.5\n\nNotes: fixed bugs\n\n---\n\n## v1.4"
+        let html = RichTextTransformer.markdownToHTML(md)
+
+        XCTAssertFalse(html.contains("frontmatter"))
+        XCTAssertTrue(html.contains("<h2 id=\"v15\">"))
+        XCTAssertTrue(html.contains("<hr />"))
+    }
+
+    // MARK: - Ordered list paragraph interruption
+
+    func testNumberedLineDoesNotInterruptParagraph() {
+        // CommonMark: only a list starting at 1 may interrupt a paragraph.
+        let md = "call the desk at extension\n5) then press star"
+        let html = RichTextTransformer.markdownToHTML(md)
+
+        XCTAssertFalse(html.contains("<ol>"))
+        XCTAssertTrue(html.contains("call the desk at extension 5) then press star"))
+    }
+
+    func testListStartingAtOneInterruptsParagraph() {
+        let md = "Steps:\n1. first\n2. second"
+        let html = RichTextTransformer.markdownToHTML(md)
+
+        XCTAssertTrue(html.contains("</p>\n<ol>"))
+        XCTAssertTrue(html.contains("<li>second</li>"))
+    }
+
+    // MARK: - HTML → markdown round-trip of new constructs
+
+    func testHTMLToMarkdownRoundTripsTaskList() {
+        let html = RichTextTransformer.markdownToHTML("- [ ] todo\n- [x] done")
+        let md = RichTextTransformer.htmlToMarkdown(html)
+
+        XCTAssertTrue(md.contains("- [ ] todo"))
+        XCTAssertTrue(md.contains("- [x] done"))
+    }
+
+    func testHTMLToMarkdownRoundTripsOrderedList() {
+        let html = RichTextTransformer.markdownToHTML("1. first\n2. second")
+        let md = RichTextTransformer.htmlToMarkdown(html)
+
+        XCTAssertTrue(md.contains("1. first"))
+        XCTAssertTrue(md.contains("1. second"), "Every item emits '1.'; markdown renumbers on render")
+        XCTAssertFalse(md.contains("- first"))
+    }
+
+    func testHTMLToMarkdownRoundTripsCodeFence() {
+        let html = RichTextTransformer.markdownToHTML("```\nlet x = 1\nlet y = 2\n```")
+        let md = RichTextTransformer.htmlToMarkdown(html)
+
+        XCTAssertTrue(md.contains("```\nlet x = 1\nlet y = 2\n```"),
+                      "Multi-line code must survive the round-trip with newlines intact")
+    }
+
+    func testHTMLToMarkdownRoundTripsFrontmatter() {
+        let html = RichTextTransformer.markdownToHTML("---\ntitle: Test\n---\n# Body")
+        let md = RichTextTransformer.htmlToMarkdown(html)
+
+        XCTAssertTrue(md.contains("---\ntitle: Test\n---"))
+        XCTAssertTrue(md.contains("# Body"))
     }
 
     // MARK: - Existing behavior still intact

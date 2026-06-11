@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ClipCore
 
 /// A node in the file tree shown in the Reader sidebar.
 /// Directories carry `children`; markdown files have `children == nil`.
@@ -22,10 +23,23 @@ final class MarkdownDocumentStore {
     /// File extensions treated as viewable markdown documents.
     static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkdn", "mkd", "txt"]
 
+    /// Largest file the Reader will render — markdown beyond this would hang
+    /// the main thread in the parser.
+    static let maxFileBytes = 8 * 1024 * 1024
+
+    /// Directory-entry budget for folder scans, keeping a stray "open ~/"
+    /// from walking the whole disk.
+    static let scanEntryBudget = 25_000
+
     var currentFileURL: URL?
-    var fileContent: String = ""
+    private(set) var fileContent: String = ""
+    /// Rendered once per content change — views read this instead of
+    /// re-parsing on every body evaluation.
+    private(set) var renderedHTML: String = ""
     var rootFolderURL: URL?
     var fileTree: [MarkdownFileNode] = []
+    private(set) var fileCount = 0
+    var isScanning = false
     var loadError: String?
 
     /// Bumped on every external open (Finder, drag onto the app) so views can
@@ -38,11 +52,21 @@ final class MarkdownDocumentStore {
     private static let recentsKey = "readerRecentPaths"
     private static let recentsLimit = 6
     private var fileWatcher: DispatchSourceFileSystemObject?
+    private var pendingReload: DispatchWorkItem?
 
     init() {
-        recentURLs = (UserDefaults.standard.stringArray(forKey: Self.recentsKey) ?? [])
+        // Load recents without touching the filesystem (paths on unmounted
+        // volumes can block on automount); prune dead entries off-main.
+        let candidates = (UserDefaults.standard.stringArray(forKey: Self.recentsKey) ?? [])
             .map { URL(fileURLWithPath: $0) }
-            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        recentURLs = candidates
+        guard !candidates.isEmpty else { return }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let alive = candidates.filter { FileManager.default.fileExists(atPath: $0.path) }
+            if alive.count != candidates.count {
+                DispatchQueue.main.async { self?.recentURLs = alive }
+            }
+        }
     }
 
     static func isMarkdownFile(_ url: URL) -> Bool {
@@ -51,7 +75,8 @@ final class MarkdownDocumentStore {
 
     // MARK: - Opening
 
-    /// Opens a file or folder. Returns true if the URL was viewable.
+    /// Opens a file or folder. Returns true if the URL was accepted
+    /// (folder scans complete asynchronously after returning).
     @discardableResult
     func open(url: URL, external: Bool = false) -> Bool {
         var isDirectory: ObjCBool = false
@@ -76,18 +101,21 @@ final class MarkdownDocumentStore {
 
     @discardableResult
     func openFile(_ url: URL) -> Bool {
-        do {
-            fileContent = try String(contentsOf: url, encoding: .utf8)
-        } catch {
-            // Fall back through common encodings before giving up.
-            if let data = try? Data(contentsOf: url),
-               let text = String(data: data, encoding: .utf16) ?? String(data: data, encoding: .isoLatin1) {
-                fileContent = text
-            } else {
-                loadError = "Could not read \(url.lastPathComponent)."
-                return false
-            }
+        guard Self.isMarkdownFile(url) else {
+            loadError = "\(url.lastPathComponent) isn't a markdown file. Clip can view: " +
+                Self.markdownExtensions.sorted().map { ".\($0)" }.joined(separator: ", ")
+            return false
         }
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard size <= Self.maxFileBytes else {
+            loadError = "\(url.lastPathComponent) is too large to preview (\(size / 1_048_576) MB)."
+            return false
+        }
+        guard let text = Self.readText(url) else {
+            loadError = "Could not read \(url.lastPathComponent)."
+            return false
+        }
+        setContent(text)
         currentFileURL = url
         loadError = nil
         // Keep the folder context when selecting a file inside the open tree;
@@ -97,26 +125,72 @@ final class MarkdownDocumentStore {
            !url.resolvingSymlinksInPath().path.hasPrefix(root.resolvingSymlinksInPath().path + "/") {
             rootFolderURL = nil
             fileTree = []
+            fileCount = 0
         }
         watchCurrentFile()
         return true
     }
 
+    /// Single read path (UTF-8 with UTF-16/Latin-1 fallback) shared by opening
+    /// and live reload.
+    private static func readText(_ url: URL) -> String? {
+        if let text = try? String(contentsOf: url, encoding: .utf8) { return text }
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return String(data: data, encoding: .utf16) ?? String(data: data, encoding: .isoLatin1)
+    }
+
+    private func setContent(_ text: String) {
+        fileContent = text
+        renderedHTML = RichTextTransformer.markdownToHTML(text)
+    }
+
+    /// Accepts the folder immediately and scans it off the main thread —
+    /// large trees must not beachball the panel. `synchronous: true` is for
+    /// tests and small known trees.
     @discardableResult
-    func openFolder(_ url: URL) -> Bool {
-        let tree = Self.scanFolder(url)
+    func openFolder(_ url: URL, synchronous: Bool = false) -> Bool {
+        if synchronous {
+            applyScanResult(Self.scanFolder(url), for: url)
+            return !fileTree.isEmpty
+        }
+
+        isScanning = true
+        rootFolderURL = url
+        fileTree = []
+        fileCount = 0
+        loadError = nil
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let tree = Self.scanFolder(url)
+            DispatchQueue.main.async {
+                guard let self, self.rootFolderURL == url else { return }
+                self.isScanning = false
+                self.applyScanResult(tree, for: url)
+            }
+        }
+        return true
+    }
+
+    private func applyScanResult(_ tree: [MarkdownFileNode], for url: URL) {
         guard !tree.isEmpty else {
             loadError = "No markdown files found in \(url.lastPathComponent)."
-            return false
+            if rootFolderURL == url { rootFolderURL = nil }
+            fileTree = []
+            fileCount = 0
+            return
         }
         rootFolderURL = url
         fileTree = tree
+        fileCount = Self.fileCount(in: tree)
         loadError = nil
-        // Auto-select the first file so the preview is never empty.
-        if let first = Self.firstFile(in: tree) {
+        // Auto-select the first file so the preview is never empty,
+        // unless the user already opened a file from this tree.
+        let rootPath = url.resolvingSymlinksInPath().path + "/"
+        let currentInsideTree = currentFileURL.map {
+            $0.resolvingSymlinksInPath().path.hasPrefix(rootPath)
+        } ?? false
+        if !currentInsideTree, let first = Self.firstFile(in: tree) {
             openFile(first.url)
         }
-        return true
     }
 
     func reloadCurrentFile() {
@@ -127,9 +201,14 @@ final class MarkdownDocumentStore {
     func closeAll() {
         currentFileURL = nil
         fileContent = ""
+        renderedHTML = ""
         rootFolderURL = nil
         fileTree = []
+        fileCount = 0
+        isScanning = false
         loadError = nil
+        pendingReload?.cancel()
+        pendingReload = nil
         fileWatcher?.cancel()
         fileWatcher = nil
     }
@@ -138,10 +217,16 @@ final class MarkdownDocumentStore {
 
     /// Builds a tree of markdown files under `url`. Hidden entries are skipped,
     /// directories without any markdown descendants are pruned, and siblings are
-    /// sorted folders-first, then case-insensitively by name.
-    static func scanFolder(_ url: URL, depth: Int = 0) -> [MarkdownFileNode] {
-        // Defensive cap for pathological nesting / symlink loops.
-        guard depth < 12 else { return [] }
+    /// sorted folders-first, then case-insensitively by name. The walk stops
+    /// descending once `scanEntryBudget` entries have been visited.
+    static func scanFolder(_ url: URL) -> [MarkdownFileNode] {
+        var budget = scanEntryBudget
+        return scanFolder(url, depth: 0, budget: &budget)
+    }
+
+    private static func scanFolder(_ url: URL, depth: Int, budget: inout Int) -> [MarkdownFileNode] {
+        // Defensive caps for pathological nesting / symlink loops / huge trees.
+        guard depth < 12, budget > 0 else { return [] }
 
         let contents = (try? FileManager.default.contentsOfDirectory(
             at: url,
@@ -151,10 +236,12 @@ final class MarkdownDocumentStore {
 
         var nodes: [MarkdownFileNode] = []
         for entry in contents {
+            guard budget > 0 else { break }
+            budget -= 1
             let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
             if values?.isSymbolicLink == true { continue }
             if values?.isDirectory == true {
-                let children = scanFolder(entry, depth: depth + 1)
+                let children = scanFolder(entry, depth: depth + 1, budget: &budget)
                 if !children.isEmpty {
                     nodes.append(MarkdownFileNode(url: entry, children: children))
                 }
@@ -208,19 +295,35 @@ final class MarkdownDocumentStore {
 
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd,
-            eventMask: [.write, .rename, .delete],
+            eventMask: [.write, .rename, .delete, .extend],
             queue: .main
         )
         source.setEventHandler { [weak self] in
-            guard let self, let url = self.currentFileURL else { return }
-            if FileManager.default.fileExists(atPath: url.path) {
-                self.fileContent = (try? String(contentsOf: url, encoding: .utf8)) ?? self.fileContent
-                // Editors that save via rename replace the inode — re-arm the watcher.
-                self.watchCurrentFile()
-            }
+            self?.scheduleReload()
         }
         source.setCancelHandler { close(fd) }
         source.resume()
         fileWatcher = source
+    }
+
+    /// Debounced reload: editors fire several events per save (and atomic
+    /// saves briefly delete the path), so wait for the dust to settle, then
+    /// go through the normal openFile path — which re-reads with encoding
+    /// fallbacks and re-arms the watcher on the new inode.
+    private func scheduleReload(retriesLeft: Int = 3) {
+        pendingReload?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, let url = self.currentFileURL else { return }
+            if FileManager.default.fileExists(atPath: url.path) {
+                self.openFile(url)
+            } else if retriesLeft > 0 {
+                // Atomic save: file is momentarily gone — try again shortly.
+                self.scheduleReload(retriesLeft: retriesLeft - 1)
+            }
+            // After the retries: file genuinely deleted. Keep showing the last
+            // content; the next watcher arm happens if the user reopens.
+        }
+        pendingReload = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
     }
 }

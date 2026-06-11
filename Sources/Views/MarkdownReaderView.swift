@@ -120,7 +120,7 @@ struct MarkdownReaderView: View {
 
     private var documentLayout: some View {
         HStack(spacing: 0) {
-            if !store.fileTree.isEmpty && showSidebar {
+            if (!store.fileTree.isEmpty || store.isScanning) && showSidebar {
                 sidebar
                     .frame(width: 190)
                 Divider()
@@ -128,10 +128,18 @@ struct MarkdownReaderView: View {
 
             VStack(spacing: 0) {
                 previewHeader
+                if let error = store.loadError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                        .background(Color.red.opacity(0.08))
+                }
                 if store.currentFileURL != nil {
-                    HTMLPreviewView(htmlContent: RichTextTransformer.markdownToHTML(store.fileContent))
+                    HTMLPreviewView(htmlContent: store.renderedHTML)
                 } else {
-                    Text("Select a file from the sidebar")
+                    Text(store.isScanning ? "Scanning folder…" : "Select a file from the sidebar")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,9 +160,14 @@ struct MarkdownReaderView: View {
                     .foregroundStyle(AppColors.textPrimary)
                     .lineLimit(1)
                 Spacer()
-                Text("\(MarkdownDocumentStore.fileCount(in: store.fileTree))")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                if store.isScanning {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Text("\(store.fileCount)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
             }
             .padding(.horizontal, 10)
             .frame(height: 28)
@@ -333,10 +346,11 @@ struct MarkdownReaderView: View {
         panel.canChooseDirectories = directories
         panel.allowsMultipleSelection = false
         if !directories {
-            var types: [UTType] = [.plainText]
-            if let md = UTType(filenameExtension: "md") { types.insert(md, at: 0) }
-            if let markdown = UTType(filenameExtension: "markdown") { types.append(markdown) }
-            panel.allowedContentTypes = types
+            // Derive the allowed types from the store's canonical extension set
+            // so the dialog never diverges from what the Reader actually opens.
+            panel.allowedContentTypes = MarkdownDocumentStore.markdownExtensions
+                .sorted()
+                .compactMap { UTType(filenameExtension: $0) }
         }
         guard panel.runModal() == .OK, let url = panel.url else { return false }
         return MarkdownDocumentStore.shared.open(url: url, external: true)

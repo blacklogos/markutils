@@ -98,7 +98,6 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
             <key>LSItemContentTypes</key>
             <array>
                 <string>net.daringfireball.markdown</string>
-                <string>public.plain-text</string>
             </array>
         </dict>
         <dict>

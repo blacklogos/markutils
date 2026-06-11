@@ -123,6 +123,17 @@ struct HTMLPreviewView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        webView.loadHTMLString(fullHTML, baseURL: nil)
+        // Skip identical reloads — unrelated SwiftUI state changes would
+        // otherwise reset the scroll position on every body evaluation.
+        let html = fullHTML
+        guard html != context.coordinator.lastHTML else { return }
+        context.coordinator.lastHTML = html
+        webView.loadHTMLString(html, baseURL: nil)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var lastHTML = ""
     }
 }

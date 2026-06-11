@@ -28,6 +28,22 @@ All notable changes to Clip are documented here.
 - Fixed crash when launching the app by opening a document (open event arrives before the panel exists)
 - Fixed stale `NoteStore` test referencing removed `todayNote` API
 
+### Hardening (post-review fixes)
+- Notes checkboxes now toggle by exact source line (`data-line` emitted by the renderer) — task-like
+  text inside code fences or frontmatter can no longer shift clicks onto the wrong line
+- Frontmatter detection requires every line between the `---` fences to look like YAML, so documents
+  opening with a horizontal rule are no longer swallowed into a metadata block
+- Reader rejects non-markdown and oversized (>8 MB) files with a clear error instead of rendering garbage
+- "Open With" registration narrowed to markdown UTIs only (no longer claims all plain-text files)
+- Live-reload watcher survives atomic saves and delete/recreate cycles (debounced, re-arms on the new inode)
+- Folder scans run off the main thread with a 25k-entry budget — huge folders no longer freeze the panel
+- `htmlToMarkdown` round-trips the new constructs: task checkboxes, ordered lists, multi-line code fences,
+  and frontmatter
+- Ordered lists follow the CommonMark interrupt rule (only `1.` may break a paragraph) — hard-wrapped
+  prose like "extension\n5) press star" stays a paragraph
+- Preview WebViews skip identical reloads, preserving scroll position during UI state changes
+- Markdown is rendered once per content change (cached in the store) instead of on every view update
+
 ---
 
 ## v1.5.0 — 2026-04-26

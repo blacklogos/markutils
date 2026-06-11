@@ -14,6 +14,10 @@ public struct RichTextTransformer {
         var inParagraph = false
         var inList = false
         var inOrderedList = false
+        // Offset from current line index back to the ORIGINAL document line.
+        // Task checkboxes carry data-line="<original index>" so interactive
+        // previews can toggle the exact source line without re-counting.
+        var lineOffset = 0
 
         // YAML frontmatter renders as a muted metadata block instead of
         // leaking into the document as stray paragraphs and rules.
@@ -21,6 +25,7 @@ public struct RichTextTransformer {
             html += "<pre class=\"frontmatter\"><code>"
                 + frontmatter.block.map(htmlEscape).joined(separator: "\n")
                 + "</code></pre>\n"
+            lineOffset = lines.count - frontmatter.rest.count
             lines = frontmatter.rest
         }
 
@@ -104,15 +109,18 @@ public struct RichTextTransformer {
                 if item.hasPrefix("[ ] ") || item.hasPrefix("[x] ") || item.hasPrefix("[X] ") {
                     let checked = !item.hasPrefix("[ ] ")
                     let content = String(item.dropFirst(4))
-                    html += "<li class=\"task\"><input type=\"checkbox\" disabled\(checked ? " checked" : "")> \(parseInline(content))</li>\n"
+                    html += "<li class=\"task\"><input type=\"checkbox\" disabled data-line=\"\(i + lineOffset)\"\(checked ? " checked" : "")> \(parseInline(content))</li>\n"
                 } else {
                     html += "<li>\(parseInline(item))</li>\n"
                 }
                 i += 1; continue
             }
 
-            // Ordered list items ("1. " or "1) ")
-            if let marker = trimmed.range(of: #"^\d{1,3}[.)] "#, options: .regularExpression) {
+            // Ordered list items ("1. " or "1) "). Per CommonMark, only a list
+            // starting at 1 may interrupt a paragraph — keeps hard-wrapped prose
+            // like "…extension\n5) press star" from being misparsed as a list.
+            if let marker = trimmed.range(of: #"^\d{1,3}[.)] "#, options: .regularExpression),
+               !inParagraph || inOrderedList || trimmed.hasPrefix("1.") || trimmed.hasPrefix("1)") {
                 if inParagraph { html += "</p>\n"; inParagraph = false }
                 if inList { html += "</ul>\n"; inList = false }
                 if !inOrderedList { html += "<ol>\n"; inOrderedList = true }
@@ -135,19 +143,33 @@ public struct RichTextTransformer {
         return html.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Detects a YAML frontmatter block: an opening `---` on the first line,
-    /// a closing `---`, and at least one `key: value` line between them.
+    /// Detects a YAML frontmatter block: an opening `---` on the first line and
+    /// a closing `---` within the first 50 lines. To avoid swallowing documents
+    /// that merely start with a horizontal rule, EVERY non-empty line between
+    /// the fences must look like YAML (`key: value`, a `- ` list entry, an
+    /// indented continuation, or a `#` comment) and at least one must be a key.
     /// Returns the inner lines and the remaining document, or nil if absent.
     public static func extractFrontmatter(_ lines: [String]) -> (block: [String], rest: [String])? {
         guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return nil }
-        guard let closeIndex = lines.dropFirst().firstIndex(where: {
+        guard let closeIndex = lines.dropFirst().prefix(50).firstIndex(where: {
             $0.trimmingCharacters(in: .whitespaces) == "---"
         }) else { return nil }
 
         let block = Array(lines[1..<closeIndex])
-        guard block.contains(where: {
-            $0.range(of: #"^\s*[\w-]+\s*:"#, options: .regularExpression) != nil
-        }) else { return nil }
+        let isKeyLine = { (line: String) in
+            line.range(of: #"^\s*[\w-]+\s*:"#, options: .regularExpression) != nil
+        }
+        // NOTE: no "#"-comment allowance — markdown headings also start with #,
+        // and a heading between two rules means prose, not metadata.
+        let isYAMLish = { (line: String) in
+            isKeyLine(line)
+                || line.range(of: #"^\s*-\s"#, options: .regularExpression) != nil
+                || line.hasPrefix(" ") || line.hasPrefix("\t")
+        }
+        let nonEmpty = block.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !nonEmpty.isEmpty,
+              nonEmpty.contains(where: isKeyLine),
+              nonEmpty.allSatisfy(isYAMLish) else { return nil }
 
         return (block, Array(lines[(closeIndex + 1)...]))
     }
@@ -214,6 +236,28 @@ public struct RichTextTransformer {
     public static func htmlToMarkdown(_ html: String) -> String {
         var markdown = html
 
+        // 0. Extract <pre> blocks into placeholders BEFORE newline-flattening
+        // so multi-line code (and frontmatter) survive the stream processing.
+        var preBlocks: [String] = []
+        if let preRegex = try? NSRegularExpression(
+            pattern: "<pre( class=\"frontmatter\")?>\\s*<code[^>]*>(.*?)</code>\\s*</pre>",
+            options: [.dotMatchesLineSeparators]
+        ) {
+            let ns = markdown as NSString
+            var rebuilt = ""
+            var cursor = 0
+            for match in preRegex.matches(in: markdown, range: NSRange(location: 0, length: ns.length)) {
+                rebuilt += ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+                let fence = match.range(at: 1).location != NSNotFound ? "---" : "```"
+                let content = decodeHTMLEntities(ns.substring(with: match.range(at: 2)))
+                preBlocks.append("\n\(fence)\n\(content)\n\(fence)\n")
+                rebuilt += "\u{F8FF}PRE\(preBlocks.count - 1)\u{F8FF}"
+                cursor = match.range.location + match.range.length
+            }
+            rebuilt += ns.substring(from: cursor)
+            markdown = rebuilt
+        }
+
         // 1. Remove system-generated newlines to process as a stream
         markdown = markdown.replacingOccurrences(of: "\n", with: " ")
 
@@ -226,10 +270,31 @@ public struct RichTextTransformer {
         markdown = markdown.replacingOccurrences(of: "<h3[^>]*>(.*?)</h3>", with: "\n### $1\n", options: .regularExpression)
         markdown = markdown.replacingOccurrences(of: "<h4[^>]*>(.*?)</h4>", with: "\n#### $1\n", options: .regularExpression)
 
-        // 4. Lists
+        // 4. Lists — task items first (checkbox state → markdown), then ordered
+        // lists ("1." for every item; markdown renumbers automatically), then
+        // plain bullets. <li> may carry attributes (class="task", data-line).
+        markdown = markdown.replacingOccurrences(
+            of: "<li[^>]*><input[^>]*\\bchecked[^>]*> ?(.*?)</li>",
+            with: "\n- [x] $1", options: .regularExpression)
+        markdown = markdown.replacingOccurrences(
+            of: "<li[^>]*><input[^>]*type=\"checkbox\"[^>]*> ?(.*?)</li>",
+            with: "\n- [ ] $1", options: .regularExpression)
+        if let olRegex = try? NSRegularExpression(pattern: "<ol>(.*?)</ol>", options: [.dotMatchesLineSeparators]) {
+            let ns = markdown as NSString
+            var rebuilt = ""
+            var cursor = 0
+            for match in olRegex.matches(in: markdown, range: NSRange(location: 0, length: ns.length)) {
+                rebuilt += ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+                rebuilt += "\n" + ns.substring(with: match.range(at: 1))
+                    .replacingOccurrences(of: "<li[^>]*>(.*?)</li>", with: "\n1. $1", options: .regularExpression) + "\n"
+                cursor = match.range.location + match.range.length
+            }
+            rebuilt += ns.substring(from: cursor)
+            markdown = rebuilt
+        }
         markdown = markdown.replacingOccurrences(of: "<ul>", with: "\n")
         markdown = markdown.replacingOccurrences(of: "</ul>", with: "\n")
-        markdown = markdown.replacingOccurrences(of: "<li>(.*?)</li>", with: "\n- $1", options: .regularExpression)
+        markdown = markdown.replacingOccurrences(of: "<li[^>]*>(.*?)</li>", with: "\n- $1", options: .regularExpression)
 
         // 5. Formatting
         markdown = markdown.replacingOccurrences(of: "<strong>(.*?)</strong>", with: "**$1**", options: .regularExpression)
@@ -250,11 +315,12 @@ public struct RichTextTransformer {
         markdown = markdown.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
 
         // 9. Decode entities (basic)
-        markdown = markdown.replacingOccurrences(of: "&lt;", with: "<")
-        markdown = markdown.replacingOccurrences(of: "&gt;", with: ">")
-        markdown = markdown.replacingOccurrences(of: "&amp;", with: "&")
-        markdown = markdown.replacingOccurrences(of: "&quot;", with: "\"")
-        markdown = markdown.replacingOccurrences(of: "&nbsp;", with: " ")
+        markdown = decodeHTMLEntities(markdown)
+
+        // 10. Restore protected <pre> blocks (content already decoded)
+        for (index, block) in preBlocks.enumerated() {
+            markdown = markdown.replacingOccurrences(of: "\u{F8FF}PRE\(index)\u{F8FF}", with: block)
+        }
 
         // Fix multiple newlines
         while markdown.contains("\n\n\n") {
@@ -262,6 +328,16 @@ public struct RichTextTransformer {
         }
 
         return markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public static func decodeHTMLEntities(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#x27;", with: "'")
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "&amp;", with: "&")
     }
 
     // Converts <table>...</table> blocks in an HTML string to markdown tables.

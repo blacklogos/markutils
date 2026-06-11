@@ -145,8 +145,8 @@ struct NotesView: View {
                 if isPreview {
                     CheckableHTMLPreviewView(
                         html: RichTextTransformer.markdownToHTML(note.body)
-                    ) { idx, checked in
-                        toggleCheckbox(in: note, at: idx, checked: checked)
+                    ) { line, checked in
+                        toggleCheckbox(in: note, line: line, checked: checked)
                     }
                 } else {
                     MarkdownTextEditor(text: Binding(
@@ -239,28 +239,18 @@ struct NotesView: View {
         MarkdownPreviewRouter.shared.request(body)
     }
 
-    // Finds the nth checkbox line (0-indexed) and toggles its state.
-    private func toggleCheckbox(in note: Note, at index: Int, checked: Bool) {
+    // Toggles the task checkbox on the given source line — the line number
+    // comes from the data-line attribute markdownToHTML stamps on each task,
+    // so fences/frontmatter content can never shift the mapping.
+    private func toggleCheckbox(in note: Note, line: Int, checked: Bool) {
         var lines = note.body.components(separatedBy: "\n")
-        var checkboxCount = 0
-        for (i, line) in lines.enumerated() {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("- [ ]") || trimmed.hasPrefix("- [x]") || trimmed.hasPrefix("- [X]") else {
-                continue
-            }
-            if checkboxCount == index {
-                if checked {
-                    if let r = lines[i].range(of: "- [ ]") {
-                        lines[i].replaceSubrange(r, with: "- [x]")
-                    }
-                } else {
-                    if let r = lines[i].range(of: "- [x]", options: .caseInsensitive) {
-                        lines[i].replaceSubrange(r, with: "- [ ]")
-                    }
-                }
-                break
-            }
-            checkboxCount += 1
+        guard lines.indices.contains(line) else { return }
+        let trimmed = lines[line].trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("- [") || trimmed.hasPrefix("* [") else { return }
+        if checked, let r = lines[line].range(of: "[ ]") {
+            lines[line].replaceSubrange(r, with: "[x]")
+        } else if !checked, let r = lines[line].range(of: "[x]", options: .caseInsensitive) {
+            lines[line].replaceSubrange(r, with: "[ ]")
         }
         note.body = lines.joined(separator: "\n")
         note.updatedAt = Date()

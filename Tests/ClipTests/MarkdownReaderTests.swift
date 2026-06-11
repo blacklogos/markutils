@@ -110,18 +110,19 @@ final class MarkdownReaderTests: XCTestCase {
         try makeFile("notes/b.md", contents: "# B")
         let store = MarkdownDocumentStore()
 
-        XCTAssertTrue(store.open(url: tempDir))
+        XCTAssertTrue(store.openFolder(tempDir, synchronous: true))
         XCTAssertEqual(store.rootFolderURL, tempDir)
-        XCTAssertEqual(MarkdownDocumentStore.fileCount(in: store.fileTree), 2)
+        XCTAssertEqual(store.fileCount, 2)
         // First file auto-selected so the preview is never empty
         XCTAssertEqual(store.currentFileURL?.lastPathComponent, "a.md")
         XCTAssertEqual(store.fileContent, "# A")
+        XCTAssertTrue(store.renderedHTML.contains("<h1"), "HTML is rendered once per content change")
     }
 
     func testOpenEmptyFolderFails() throws {
         let store = MarkdownDocumentStore()
 
-        XCTAssertFalse(store.open(url: tempDir))
+        XCTAssertFalse(store.openFolder(tempDir, synchronous: true))
         XCTAssertNotNil(store.loadError)
         XCTAssertNil(store.rootFolderURL)
     }
@@ -134,18 +135,44 @@ final class MarkdownReaderTests: XCTestCase {
         XCTAssertNotNil(store.loadError)
     }
 
+    func testOpenRejectsNonMarkdownFile() throws {
+        let binary = tempDir.appendingPathComponent("image.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: binary)
+        let store = MarkdownDocumentStore()
+
+        XCTAssertFalse(store.open(url: binary))
+        XCTAssertNotNil(store.loadError)
+        XCTAssertNil(store.currentFileURL)
+    }
+
     func testOpenFileOutsideTreeExitsFolderMode() throws {
         try makeFile("inside/a.md")
         let outside = try makeFile("outside.md", contents: "# Outside")
         let store = MarkdownDocumentStore()
 
         let insideFolder = tempDir.appendingPathComponent("inside")
-        XCTAssertTrue(store.open(url: insideFolder))
+        XCTAssertTrue(store.openFolder(insideFolder, synchronous: true))
         XCTAssertNotNil(store.rootFolderURL)
 
         XCTAssertTrue(store.openFile(outside))
         XCTAssertNil(store.rootFolderURL, "Opening a file outside the tree should exit folder mode")
         XCTAssertTrue(store.fileTree.isEmpty)
+    }
+
+    func testAsyncFolderOpenPublishesTreeOnMain() throws {
+        try makeFile("docs/a.md", contents: "# A")
+        let store = MarkdownDocumentStore()
+
+        XCTAssertTrue(store.open(url: tempDir), "Folders are accepted optimistically")
+        XCTAssertTrue(store.isScanning)
+
+        let deadline = Date().addingTimeInterval(5)
+        while store.isScanning && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertFalse(store.isScanning)
+        XCTAssertEqual(store.fileCount, 1)
+        XCTAssertEqual(store.currentFileURL?.lastPathComponent, "a.md")
     }
 
     func testExternalOpenBumpsCounter() throws {
