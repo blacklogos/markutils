@@ -9,3 +9,4 @@ dmg_staging/
 .claude/
 .agent/
 *.pem
+.wrangler/
