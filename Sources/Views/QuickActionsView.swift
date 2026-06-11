@@ -120,6 +120,8 @@ struct QuickActionsView: View {
 
             TextEditor(text: $input)
                 .font(.system(size: 12, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .background(AppColors.editorBackground)
                 .onChange(of: input) { _, _ in
                     output = ""
                     outputMode = .text
@@ -219,6 +221,8 @@ struct QuickActionsView: View {
             } else {
                 TextEditor(text: .constant(output))
                     .font(.system(size: 12, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .background(AppColors.editorBackground)
             }
         }
     }

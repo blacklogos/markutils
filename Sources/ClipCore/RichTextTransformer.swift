@@ -9,25 +9,55 @@ public struct RichTextTransformer {
 
     public static func markdownToHTML(_ markdown: String) -> String {
         var html = ""
-        let lines = markdown.components(separatedBy: .newlines)
+        var lines = markdown.components(separatedBy: .newlines)
         var i = 0
         var inParagraph = false
         var inList = false
+        var inOrderedList = false
+
+        // YAML frontmatter renders as a muted metadata block instead of
+        // leaking into the document as stray paragraphs and rules.
+        if let frontmatter = extractFrontmatter(lines) {
+            html += "<pre class=\"frontmatter\"><code>"
+                + frontmatter.block.map(htmlEscape).joined(separator: "\n")
+                + "</code></pre>\n"
+            lines = frontmatter.rest
+        }
+
+        func closeBlocks() {
+            if inParagraph { html += "</p>\n"; inParagraph = false }
+            if inList { html += "</ul>\n"; inList = false }
+            if inOrderedList { html += "</ol>\n"; inOrderedList = false }
+        }
 
         while i < lines.count {
             let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
 
+            // Fenced code blocks — checked before empty-line handling because
+            // fences may contain blank lines that must not close the block.
+            if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") {
+                closeBlocks()
+                let fence = trimmed.hasPrefix("```") ? "```" : "~~~"
+                var codeLines: [String] = []
+                i += 1
+                while i < lines.count && !lines[i].trimmingCharacters(in: .whitespaces).hasPrefix(fence) {
+                    codeLines.append(lines[i])
+                    i += 1
+                }
+                i += 1 // skip the closing fence (or run past an unterminated one)
+                html += "<pre><code>" + codeLines.map(htmlEscape).joined(separator: "\n") + "</code></pre>\n"
+                continue
+            }
+
             // Empty lines close open blocks
             if trimmed.isEmpty {
-                if inParagraph { html += "</p>\n"; inParagraph = false }
-                if inList { html += "</ul>\n"; inList = false }
+                closeBlocks()
                 i += 1; continue
             }
 
             // Table: collect all consecutive pipe-prefixed lines
             if trimmed.hasPrefix("|") {
-                if inParagraph { html += "</p>\n"; inParagraph = false }
-                if inList { html += "</ul>\n"; inList = false }
+                closeBlocks()
                 var tableLines: [String] = []
                 while i < lines.count && lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("|") {
                     tableLines.append(lines[i].trimmingCharacters(in: .whitespaces))
@@ -39,16 +69,14 @@ public struct RichTextTransformer {
 
             // Horizontal Rule
             if trimmed == "---" || trimmed == "***" || trimmed == "___" {
-                if inParagraph { html += "</p>\n"; inParagraph = false }
-                if inList { html += "</ul>\n"; inList = false }
+                closeBlocks()
                 html += "<hr />\n"
                 i += 1; continue
             }
 
             // Headers
             if trimmed.hasPrefix("#") {
-                if inParagraph { html += "</p>\n"; inParagraph = false }
-                if inList { html += "</ul>\n"; inList = false }
+                closeBlocks()
                 let level = trimmed.prefix(while: { $0 == "#" }).count
                 let content = String(trimmed.dropFirst(level)).trimmingCharacters(in: .whitespaces)
                 let slug = content.lowercased()
@@ -61,23 +89,40 @@ public struct RichTextTransformer {
 
             // Blockquotes
             if trimmed.hasPrefix(">") {
-                if inParagraph { html += "</p>\n"; inParagraph = false }
-                if inList { html += "</ul>\n"; inList = false }
+                closeBlocks()
                 let content = trimmed.hasPrefix("> ") ? String(trimmed.dropFirst(2)) : String(trimmed.dropFirst(1))
                 html += "<blockquote>\n<p>\(parseInline(content))</p>\n</blockquote>\n"
                 i += 1; continue
             }
 
-            // List items
+            // Unordered list items (including GitHub-style task checkboxes)
             if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
                 if inParagraph { html += "</p>\n"; inParagraph = false }
+                if inOrderedList { html += "</ol>\n"; inOrderedList = false }
                 if !inList { html += "<ul>\n"; inList = true }
-                html += "<li>\(parseInline(String(trimmed.dropFirst(2))))</li>\n"
+                let item = String(trimmed.dropFirst(2))
+                if item.hasPrefix("[ ] ") || item.hasPrefix("[x] ") || item.hasPrefix("[X] ") {
+                    let checked = !item.hasPrefix("[ ] ")
+                    let content = String(item.dropFirst(4))
+                    html += "<li class=\"task\"><input type=\"checkbox\" disabled\(checked ? " checked" : "")> \(parseInline(content))</li>\n"
+                } else {
+                    html += "<li>\(parseInline(item))</li>\n"
+                }
+                i += 1; continue
+            }
+
+            // Ordered list items ("1. " or "1) ")
+            if let marker = trimmed.range(of: #"^\d{1,3}[.)] "#, options: .regularExpression) {
+                if inParagraph { html += "</p>\n"; inParagraph = false }
+                if inList { html += "</ul>\n"; inList = false }
+                if !inOrderedList { html += "<ol>\n"; inOrderedList = true }
+                html += "<li>\(parseInline(String(trimmed[marker.upperBound...])))</li>\n"
                 i += 1; continue
             }
 
             // Paragraphs
             if inList { html += "</ul>\n"; inList = false }
+            if inOrderedList { html += "</ol>\n"; inOrderedList = false }
             if !inParagraph { html += "<p>"; inParagraph = true } else { html += " " }
             html += parseInline(trimmed)
             i += 1
@@ -85,8 +130,26 @@ public struct RichTextTransformer {
 
         if inParagraph { html += "</p>" }
         if inList { html += "</ul>" }
+        if inOrderedList { html += "</ol>" }
 
         return html.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Detects a YAML frontmatter block: an opening `---` on the first line,
+    /// a closing `---`, and at least one `key: value` line between them.
+    /// Returns the inner lines and the remaining document, or nil if absent.
+    public static func extractFrontmatter(_ lines: [String]) -> (block: [String], rest: [String])? {
+        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return nil }
+        guard let closeIndex = lines.dropFirst().firstIndex(where: {
+            $0.trimmingCharacters(in: .whitespaces) == "---"
+        }) else { return nil }
+
+        let block = Array(lines[1..<closeIndex])
+        guard block.contains(where: {
+            $0.range(of: #"^\s*[\w-]+\s*:"#, options: .regularExpression) != nil
+        }) else { return nil }
+
+        return (block, Array(lines[(closeIndex + 1)...]))
     }
 
     // Renders a block of | -prefixed lines as an HTML table.

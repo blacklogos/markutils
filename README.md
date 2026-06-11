@@ -8,7 +8,7 @@ A lightweight macOS menu bar utility for content creators. Lives in the menu bar
 
 ## What it does
 
-Four tabs, each purpose-built:
+Five tabs, each purpose-built:
 
 ### 🗂 Assets — The Vault
 Drag images and text from anywhere into the vault. Organise into folders. Drag assets back out to Keynote, PowerPoint, Pages, or the Desktop. Everything persists across app launches (JSON, `~/Library/Application Support/Clip/`).
@@ -18,6 +18,15 @@ Drag images and text from anywhere into the vault. Organise into folders. Drag a
 - Grid or compact list view
 - Full-text search
 - Right-click context menu (rename, delete, move)
+
+### 📖 Reader
+Open any markdown file — or a whole folder of them — and read it beautifully rendered. Set Clip as your "Open With" app for `.md` files in Finder, drop files onto the window, or use the menu bar → "View Markdown File…".
+
+- Folder mode: sidebar file tree (nested folders, markdown files only)
+- Live reload — edits saved in any other editor appear instantly
+- Frontmatter, fenced code blocks, task lists, ordered lists, tables
+- One-click: copy as HTML, copy as rich text, send to Transform, reveal in Finder
+- Recent files list, ⌘O / ⌘⇧O shortcuts
 
 ### ⇄ Transform
 Paste content — Clip auto-detects the type and offers the right actions. Toggle between **stacked** and **side-by-side** layout with the split view button.

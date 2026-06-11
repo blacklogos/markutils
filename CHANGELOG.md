@@ -4,6 +4,32 @@ All notable changes to Clip are documented here.
 
 ---
 
+## Unreleased
+
+### New features
+
+**Reader Tab**
+- New tab (⌘2) for viewing markdown files and folders, rendered with Clip's warm preview styling
+- Open via Finder "Open With Clip" (`.md`, `.markdown`, `.txt` registered as viewable document types), drag-and-drop onto the window, menu bar → "View Markdown File…/Folder…", ⌘O/⌘⇧O, or the recents list
+- Folder mode: collapsible sidebar file tree of all markdown files (hidden files skipped, empty folders pruned)
+- Live reload — files edited in another app refresh the preview automatically (survives atomic saves)
+- One-click actions: copy as HTML, copy as rich text, edit in Transform tab, reveal in Finder
+
+**Markdown engine upgrades** (Reader, Transform preview, Notes, CLI)
+- Fenced code blocks (``` and ~~~) with HTML escaping
+- Ordered lists (`1.` / `1)`)
+- GitHub-style task lists (`- [ ]` / `- [x]`) with styled checkboxes
+- YAML frontmatter rendered as a muted metadata block instead of leaking into the document
+
+### Improvements
+- ⌘1–⌘5 keyboard shortcuts to switch tabs (shown in tooltips)
+- Redesigned onboarding: introduces all five tools in the app's warm visual language
+- Transform tab editors now match the warm theme (no more stark white)
+- Fixed crash when launching the app by opening a document (open event arrives before the panel exists)
+- Fixed stale `NoteStore` test referencing removed `todayNote` API
+
+---
+
 ## v1.5.0 — 2026-04-26
 
 ### New features

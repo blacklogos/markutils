@@ -23,11 +23,12 @@ There is no linter or formatter configured. No third-party dependencies.
 
 **Data layer:** `AssetStore` is a singleton `@Observable` class that persists `[Asset]` as JSON to `~/Library/Application Support/Clip/assets.json`. Assets can be text, image, or folder (recursive tree via `children`). No SwiftData despite what docs say — it's plain Codable + JSON file I/O.
 
-**Tabs in ContentView** (index-based `selectedTab`):
+**Tabs in ContentView** (index-based `selectedTab`, ⌘1–⌘5 shortcuts):
 - 0: `AssetGridView` — drag-and-drop vault for images/text with folder organization
-- 1: `TransformerView` — markdown ↔ HTML (with WebKit live preview) and spreadsheet ↔ markdown table conversion
-- 2: `SocialMediaFormatterView` — Unicode text styling for social media
-- 3: `AIView` — AI integration (planned)
+- 1: `MarkdownReaderView` — view .md files/folders (sidebar tree, live reload, Finder "Open With" via `application(_:open:)`); state in `MarkdownDocumentStore`
+- 2: `QuickActionsView` — auto-detecting transform: markdown ↔ HTML (WebKit live preview), tables ↔ CSV/TSV
+- 3: `SocialMediaFormatterView` — Unicode text styling for social media
+- 4: `NotesView` — daily notes (also reachable via ⌥A floating panel)
 
 **Transformer pipeline:** `RichTextTransformer` handles markdown ↔ HTML and markdown ↔ NSAttributedString conversions. `TableTransformer` handles TSV/CSV ↔ markdown table. The preview pane uses `HTMLPreviewView` (WKWebView) rendering HTML output from `RichTextTransformer.markdownToHTML()`.
 

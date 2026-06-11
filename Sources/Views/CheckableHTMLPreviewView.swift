@@ -62,23 +62,20 @@ struct CheckableHTMLPreviewView: NSViewRepresentable {
 
     // MARK: - HTML generation
 
-    // Replaces <li>[ ] and <li>[x] patterns with <input type=checkbox> elements,
-    // assigning sequential data-idx for mapping back to the markdown source.
+    // markdownToHTML emits task items as disabled checkboxes
+    // (<input type="checkbox" disabled [checked]>). Re-enable them here and
+    // assign sequential data-idx for mapping toggles back to the markdown source.
     private func processedHTML(_ raw: String) -> String {
-        let pattern = #"<li>\[([ xX])\] "#
+        let pattern = #"<input type="checkbox" disabled( checked)?>"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return raw }
         let matches = regex.matches(in: raw, range: NSRange(raw.startIndex..., in: raw))
         let nsResult = NSMutableString(string: raw)
         var offset = 0
         for (idx, match) in matches.enumerated() {
-            let charRange = NSRange(location: match.range(at: 1).location + offset,
-                                   length: match.range(at: 1).length)
-            // Read from nsResult (already offset) to get the check character
-            let checkChar = nsResult.substring(with: charRange).lowercased()
-            let isChecked = checkChar == "x"
+            let isChecked = match.range(at: 1).location != NSNotFound
             let replacement = isChecked
-                ? "<li><input type=\"checkbox\" checked data-idx=\"\(idx)\"> "
-                : "<li><input type=\"checkbox\" data-idx=\"\(idx)\"> "
+                ? "<input type=\"checkbox\" checked data-idx=\"\(idx)\">"
+                : "<input type=\"checkbox\" data-idx=\"\(idx)\">"
             let targetRange = NSRange(location: match.range.location + offset, length: match.range.length)
             nsResult.replaceCharacters(in: targetRange, with: replacement)
             offset += (replacement as NSString).length - match.range.length
@@ -112,6 +109,9 @@ struct CheckableHTMLPreviewView: NSViewRepresentable {
             ul, ol { padding-left: 1.5em; margin: 0.4em 0; }
             li { margin: 0.2em 0; }
             input[type=checkbox] { cursor: pointer; accent-color: var(--accent); }
+            li.task { list-style: none; margin-left: -1.3em; }
+            pre { padding: 12px; border-radius: 6px; background: var(--code-bg); overflow-x: auto; }
+            pre code { padding: 0; background: none; }
             code { font-family: "SF Mono", Menlo, monospace; font-size: 0.88em;
                    padding: 0.15em 0.4em; border-radius: 3px; background: var(--code-bg); }
             table { border-collapse: collapse; width: 100%; margin: 0.6em 0; }

@@ -36,15 +36,15 @@ final class NoteStoreTests: XCTestCase {
         XCTAssertEqual(decoded.date.timeIntervalSince1970, note.date.timeIntervalSince1970, accuracy: 1.0)
     }
 
-    // MARK: - todayNote
+    // MARK: - ensureTodayNote
 
     func testTodayNoteReturnsSameInstanceOnDoubleCall() {
-        // todayNote must not create a duplicate on repeated calls within the same day.
+        // ensureTodayNote must not create a duplicate on repeated calls within the same day.
         let store = NoteStore.shared
         let countBefore = store.notes.filter { Calendar.current.isDateInToday($0.date) }.count
 
-        _ = store.todayNote
-        _ = store.todayNote
+        _ = store.ensureTodayNote()
+        _ = store.ensureTodayNote()
 
         let countAfter = store.notes.filter { Calendar.current.isDateInToday($0.date) }.count
         // At most 1 today-note should exist regardless of how many times todayNote is accessed.
@@ -58,7 +58,7 @@ final class NoteStoreTests: XCTestCase {
         let todayNotes = store.notes.filter { Calendar.current.isDateInToday($0.date) }
         for n in todayNotes { store.delete(n) }
 
-        let note = store.todayNote
+        let note = store.ensureTodayNote()
         XCTAssertTrue(Calendar.current.isDateInToday(note.date))
         XCTAssertEqual(store.notes.filter { Calendar.current.isDateInToday($0.date) }.count, 1)
     }

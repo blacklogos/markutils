@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var showOnboarding = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var previewRouter = MarkdownPreviewRouter.shared
+    @State private var documentStore = MarkdownDocumentStore.shared
 
     enum AppTheme: String, CaseIterable, Identifiable {
         case system = "System"
@@ -39,12 +40,20 @@ struct ContentView: View {
         }
         .onAppear {
             if !hasSeenOnboarding { showOnboarding = true }
+            // App was launched by opening a document — land on the Reader tab.
+            if documentStore.externalOpenCount > 0 { selectedTab = 1 }
         }
         .onChange(of: previewRouter.pendingText) { _, newValue in
-            if newValue != nil { selectedTab = 1 }
+            if newValue != nil { selectedTab = 2 }
+        }
+        // Finder "Open With Clip" (or drag onto the app) routes to the Reader tab.
+        .onChange(of: documentStore.externalOpenCount) { _, _ in
+            selectedTab = 1
         }
         // Absorb ⌘N so the system never opens a new document window.
         .background(Button("") {}.keyboardShortcut("n", modifiers: .command).hidden())
+        // ⌘1–⌘5 switch tabs directly.
+        .background(tabShortcuts)
     }
 
     // MARK: - Compact title bar
@@ -57,10 +66,11 @@ struct ContentView: View {
             Color.clear.frame(width: 8) // left breathing room
 
             // Tab icons
-            tabIcon(0, icon: "square.grid.2x2",        tooltip: "Assets")
-            tabIcon(1, icon: "arrow.left.arrow.right",  tooltip: "Transform")
-            tabIcon(2, icon: "textformat.abc",           tooltip: "Text Formatter")
-            tabIcon(3, icon: "square.and.pencil",        tooltip: "Notes")
+            tabIcon(0, icon: "square.grid.2x2",        tooltip: "Assets ⌘1")
+            tabIcon(1, icon: "book.pages",              tooltip: "Reader ⌘2")
+            tabIcon(2, icon: "arrow.left.arrow.right",  tooltip: "Transform ⌘3")
+            tabIcon(3, icon: "textformat.abc",           tooltip: "Text Formatter ⌘4")
+            tabIcon(4, icon: "square.and.pencil",        tooltip: "Notes ⌘5")
 
             Spacer() // draggable gap
 
@@ -86,10 +96,19 @@ struct ContentView: View {
     private var tabContent: some View {
         switch selectedTab {
         case 0: AssetGridView()
-        case 1: QuickActionsView()
-        case 2: SocialMediaFormatterView(text: $socialInput)
-        case 3: NotesView()
+        case 1: MarkdownReaderView()
+        case 2: QuickActionsView()
+        case 3: SocialMediaFormatterView(text: $socialInput)
+        case 4: NotesView()
         default: AssetGridView()
+        }
+    }
+
+    private var tabShortcuts: some View {
+        ForEach(0..<5) { tab in
+            Button("") { selectedTab = tab }
+                .keyboardShortcut(KeyEquivalent(Character("\(tab + 1)")), modifiers: .command)
+                .hidden()
         }
     }
 

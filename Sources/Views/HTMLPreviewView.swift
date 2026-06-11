@@ -71,6 +71,14 @@ struct HTMLPreviewView: NSViewRepresentable {
                 overflow-x: auto;
             }
             pre code { padding: 0; background: none; }
+            pre.frontmatter {
+                font-size: 0.78em;
+                color: var(--fg2);
+                background: var(--th-bg);
+                border: 1px dashed var(--border);
+            }
+            li.task { list-style: none; margin-left: -1.3em; }
+            li.task input[type="checkbox"] { accent-color: var(--accent); vertical-align: -2px; margin-right: 4px; }
             blockquote {
                 margin: 0.5em 0;
                 padding: 0.3em 1em;

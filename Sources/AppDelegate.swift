@@ -48,6 +48,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(NSMenuItem(title: "Open Clip", action: #selector(togglePanel), keyEquivalent: "o"))
         menu.addItem(NSMenuItem(title: "Open Notes  ⌥A", action: #selector(toggleNotesPanel), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "View Markdown File…", action: #selector(openMarkdownFile), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "View Markdown Folder…", action: #selector(openMarkdownFolder), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
 
         // Theme Submenu
         let themeMenu = NSMenu()
@@ -121,6 +124,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return nil
         }
 
+        // A document was opened before the panel existed (launch-by-document) —
+        // show it now that the UI is ready.
+        if pendingShowPanel {
+            pendingShowPanel = false
+            showPanel()
+        }
+
         // Offer CLI install on first launch
         offerCLIInstallIfNeeded()
     }
@@ -181,6 +191,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     
+    // Finder "Open With Clip" and `open -a Clip file.md` land here.
+    // Routes files/folders to the Reader tab and brings the panel forward.
+    // On cold launch this fires BEFORE applicationDidFinishLaunching, while
+    // floatingPanel is still nil — defer the reveal until the panel exists.
+    private var pendingShowPanel = false
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        var openedAny = false
+        for url in urls where MarkdownDocumentStore.shared.open(url: url, external: true) {
+            openedAny = true
+        }
+        guard openedAny else { return }
+        if floatingPanel == nil {
+            pendingShowPanel = true
+        } else {
+            showPanel()
+        }
+    }
+
+    @objc func openMarkdownFile() {
+        if MarkdownReaderView.presentOpenDialog(directories: false) { showPanel() }
+    }
+
+    @objc func openMarkdownFolder() {
+        if MarkdownReaderView.presentOpenDialog(directories: true) { showPanel() }
+    }
+
     @objc func toggleClipboardHistory() {
         ClipboardMonitor.shared.isEnabled.toggle()
         let enabled = ClipboardMonitor.shared.isEnabled
