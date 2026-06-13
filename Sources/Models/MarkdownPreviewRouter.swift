@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// Routes markdown content from the Asset vault to the Transform tab for preview.
-/// Set `pendingText` from any view, then the TransformerView consumes it on appear.
+/// Set `pendingText` from any view; QuickActionsView (the Transform tab) consumes it on appear.
 @Observable
 final class MarkdownPreviewRouter {
     static let shared = MarkdownPreviewRouter()

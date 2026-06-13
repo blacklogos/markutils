@@ -235,6 +235,14 @@ struct MarkdownTextEditor: NSViewRepresentable {
             for (trigger, expansion) in triggers {
                 guard prefix.hasSuffix(trigger) else { continue }
                 let nsLen = (trigger as NSString).length
+                // The checkbox triggers ("[ ]" / "[]") are short and ambiguous —
+                // only expand them at the start of a line, so "foo[]" in prose or
+                // code is left untouched.
+                if trigger.hasPrefix("[") {
+                    let before = cursorLoc - nsLen
+                    let charBefore = before > 0 ? fullString.substring(with: NSRange(location: before - 1, length: 1)) : "\n"
+                    guard charBefore == "\n" else { continue }
+                }
                 let triggerRange = NSRange(location: cursorLoc - nsLen, length: nsLen)
                 isUpdating = true
                 textView.insertText(expansion(), replacementRange: triggerRange)

@@ -69,16 +69,6 @@ class SnippetStore {
         }
     }
 
-    func add(_ snippet: Snippet) {
-        snippets.append(snippet)
-    }
-
-    func delete(_ snippet: Snippet) {
-        guard !snippet.isBuiltIn else { return }
-        snippets.removeAll { $0.id == snippet.id }
-    }
-
-
     private func save() {
         do {
             let data = try JSONEncoder().encode(snippets)

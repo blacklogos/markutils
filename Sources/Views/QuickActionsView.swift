@@ -162,12 +162,12 @@ struct QuickActionsView: View {
 
         case .tsv:
             actionButton("To Markdown Table") { output = TableTransformer.tsvToMarkdown(input); outputMode = .text }
-            actionButton("To CSV") { output = tsvToCSV(input); outputMode = .text }
+            actionButton("To CSV") { output = TableTransformer.tsvToCSV(input); outputMode = .text }
             actionButton("Copy") { copyText(input) }
 
         case .csv:
             actionButton("To Markdown Table") { output = TableTransformer.csvToMarkdown(input); outputMode = .text }
-            actionButton("To TSV") { output = csvToTSV(input); outputMode = .text }
+            actionButton("To TSV") { output = TableTransformer.csvToTSV(input); outputMode = .text }
             actionButton("Copy") { copyText(input) }
 
         case .html:
@@ -363,33 +363,4 @@ struct QuickActionsView: View {
             .joined(separator: "\n")
     }
 
-    private func tsvToCSV(_ tsv: String) -> String {
-        tsv.components(separatedBy: .newlines).map { line in
-            line.components(separatedBy: "\t").map { field in
-                if field.contains(",") || field.contains("\"") || field.contains("\n") {
-                    return "\"\(field.replacingOccurrences(of: "\"", with: "\"\""))\""
-                }
-                return field
-            }.joined(separator: ",")
-        }.joined(separator: "\n")
-    }
-
-    private func csvToTSV(_ csv: String) -> String {
-        csv.components(separatedBy: .newlines).map { line in
-            var fields: [String] = []
-            var current = ""
-            var inQuotes = false
-            for char in line {
-                if char == "\"" {
-                    inQuotes.toggle()
-                } else if char == "," && !inQuotes {
-                    fields.append(current); current = ""
-                } else {
-                    current.append(char)
-                }
-            }
-            fields.append(current)
-            return fields.joined(separator: "\t")
-        }.joined(separator: "\n")
-    }
 }

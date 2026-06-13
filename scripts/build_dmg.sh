@@ -42,10 +42,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# NOTE: Quick Look extension (.appex) requires Developer ID signing.
-# Sources are in Sources/ClipQLPreview/ and Sources/ClipQLGenerator/ for when
-# a Developer ID is available. Skipped for ad-hoc builds.
-
 # 2. Create App Bundle Structure
 echo "📦 Creating App Bundle..."
 rm -rf "${APP_BUNDLE}"

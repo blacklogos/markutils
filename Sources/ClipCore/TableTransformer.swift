@@ -16,8 +16,20 @@ public struct TableTransformer {
         }.joined(separator: "\n")
     }
     
+    // MARK: - TSV <-> CSV
+
+    public static func tsvToCSV(_ tsv: String) -> String {
+        tsv.components(separatedBy: .newlines).map { line in
+            line.components(separatedBy: "\t").map(escapeCSVField).joined(separator: ",")
+        }.joined(separator: "\n")
+    }
+
+    public static func csvToTSV(_ csv: String) -> String {
+        parseCSV(csv).map { $0.joined(separator: "\t") }.joined(separator: "\n")
+    }
+
     // MARK: - TSV/CSV to Markdown
-    
+
     public static func tsvToMarkdown(_ tsv: String) -> String {
         let rows = tsv.components(separatedBy: .newlines)
             .filter { !$0.isEmpty }

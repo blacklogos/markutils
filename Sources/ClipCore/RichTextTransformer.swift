@@ -1,7 +1,7 @@
 import Foundation
 
 // Pure-Foundation transformer: markdownToHTML, htmlToMarkdown, and related helpers.
-// AppKit-dependent methods (markdownToRichText, richTextToMarkdown) live in
+// The AppKit-dependent markdownToRichText lives in
 // Sources/Utilities/RichTextTransformer.swift as an extension in the Clip app target.
 public struct RichTextTransformer {
 
