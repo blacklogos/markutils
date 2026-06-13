@@ -91,11 +91,13 @@ struct MinimalNotesView: View {
                     MarkdownTextEditor(text: Binding(
                         get: { note.body },
                         set: { newBody in
+                            guard newBody != note.body else { return }
                             note.body = newBody
                             note.updatedAt = Date()
                             NoteStore.shared.save()
                         }
                     ))
+                    .id(note.id)
                 }
             } else {
                 Color.clear

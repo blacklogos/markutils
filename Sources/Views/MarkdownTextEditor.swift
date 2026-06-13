@@ -54,6 +54,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        // Re-point the coordinator at THIS render's binding. The binding's
+        // setter captures a specific note; without this refresh the coordinator
+        // keeps the binding from when the view was first created and writes the
+        // editor's text into the previously-selected note (corruption + dupes
+        // when switching notes via the sidebar or ⌥A).
+        context.coordinator.parent = self
         guard !context.coordinator.isUpdating, textView.string != text else { return }
         textView.string = text
         // Re-apply styling after external text replacement (full document, no dirty range)

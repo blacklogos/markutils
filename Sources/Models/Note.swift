@@ -61,11 +61,15 @@ final class NoteStore {
         load()
     }
 
-    // Ensures today's note exists; creates one if needed. Mutation is explicit here.
+    // Ensures today's note exists; creates one if needed. Mutation is explicit
+    // here. A today-note is reused if present (the most recently updated one, so
+    // repeated panel opens can never select — or stack — a stale blank); only
+    // when none exists today is a fresh note created.
     @discardableResult
     func ensureTodayNote() -> Note {
-        if let existing = notes.first(where: { Calendar.current.isDateInToday($0.date) }) {
-            return existing
+        let todays = notes.filter { Calendar.current.isDateInToday($0.date) }
+        if let today = todays.max(by: { $0.updatedAt < $1.updatedAt }) {
+            return today
         }
         let note = Note()
         notes.append(note)

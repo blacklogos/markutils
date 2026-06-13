@@ -152,11 +152,18 @@ struct NotesView: View {
                     MarkdownTextEditor(text: Binding(
                         get: { note.body },
                         set: { newBody in
+                            // Ignore no-op writes from the async textDidChange that
+                            // can land right after a note switch — they would stamp
+                            // updatedAt and persist without a real edit.
+                            guard newBody != note.body else { return }
                             note.body = newBody
                             note.updatedAt = Date()
                             NoteStore.shared.save()
                         }
                     ))
+                    // Rebuild the editor per note so a freshly-selected note never
+                    // inherits the previous note's coordinator or pending edits.
+                    .id(note.id)
                 }
             } else {
                 VStack {

@@ -63,6 +63,43 @@ final class NoteStoreTests: XCTestCase {
         XCTAssertEqual(store.notes.filter { Calendar.current.isDateInToday($0.date) }.count, 1)
     }
 
+    func testEnsureTodayNoteReusesExistingTodayNoteInsteadOfStackingBlanks() {
+        // Repro for the ⌥A duplicate-empty-note bug: opening the panel must not
+        // append a second blank note when a today-note already exists.
+        let store = NoteStore.shared
+        for n in store.notes.filter({ Calendar.current.isDateInToday($0.date) }) { store.delete(n) }
+        let seeded = Note(body: "real content for today")
+        store.add(seeded)
+
+        // Open the panel twice in a row — neither should create a blank.
+        let first = store.ensureTodayNote()
+        let second = store.ensureTodayNote()
+
+        XCTAssertEqual(first.id, seeded.id, "Existing today note must be reused")
+        XCTAssertEqual(second.id, seeded.id, "Repeated opens return the same today note")
+        XCTAssertEqual(store.notes.filter { Calendar.current.isDateInToday($0.date) }.count, 1,
+                       "No duplicate today note may be appended")
+
+        store.delete(seeded)
+    }
+
+    func testEnsureTodayNotePrefersMostRecentlyEditedTodayNote() {
+        // If duplicate today-notes already exist on disk (legacy data), the panel
+        // should land on the one the user most recently touched, not a stale blank.
+        let store = NoteStore.shared
+        for n in store.notes.filter({ Calendar.current.isDateInToday($0.date) }) { store.delete(n) }
+        let stale = Note(body: "")
+        stale.updatedAt = Date(timeIntervalSinceNow: -3600)
+        let recent = Note(body: "the active one")
+        store.add(stale)
+        store.add(recent)
+
+        XCTAssertEqual(store.ensureTodayNote().id, recent.id)
+
+        store.delete(stale)
+        store.delete(recent)
+    }
+
     // MARK: - Mutation
 
     func testBodyMutationPreservesOtherFields() {
