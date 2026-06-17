@@ -65,6 +65,19 @@ final class CommentSidePanelModelTests: XCTestCase {
         XCTAssertEqual(store.comments.first?.note, "keep me")
     }
 
+    func testClearAllRemovesEveryCommentAndPersists() {
+        let store = loadedStore()
+        store.addComment(quote: "$9 per month", prefix: "", suffix: "", note: "a")
+        store.addComment(quote: "Doc", prefix: "", suffix: "", note: "b")
+        XCTAssertEqual(store.comments.count, 2)
+        store.clearAll()
+        XCTAssertTrue(store.comments.isEmpty)
+
+        let reloaded = CommentStore(directory: tempDir.appendingPathComponent("comments"))
+        reloaded.load(for: file)
+        XCTAssertTrue(reloaded.comments.isEmpty)
+    }
+
     func testDeletingRemovesCommentAndPersists() {
         let store = loadedStore()
         let c = store.addComment(quote: "$9 per month", prefix: "", suffix: "", note: "doomed")!

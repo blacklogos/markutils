@@ -154,7 +154,8 @@ struct MarkdownReaderView: View {
                     selectedID: $selectedCommentID,
                     onJump: { jump(to: $0) },
                     onEdit: { commentStore.updateNote(id: $0, note: $1) },
-                    onDelete: { commentStore.delete($0) }
+                    onDelete: { commentStore.delete($0) },
+                    onClearAll: { commentStore.clearAll() }
                 )
             }
         }
@@ -281,18 +282,23 @@ struct MarkdownReaderView: View {
                 ) {
                     withAnimation(.easeInOut(duration: 0.15)) { showComments.toggle() }
                 }
-                headerButton(
-                    icon: "quote.bubble",
-                    tooltip: selectedComment == nil
-                        ? "Select a comment to copy its section"
-                        : "Copy this section as instruction",
-                    disabled: selectedComment == nil
-                ) {
-                    if let comment = selectedComment {
+
+                // "Copy section" appears only once a comment is selected.
+                if let comment = selectedComment {
+                    pillButton(icon: "quote.bubble", label: "Section",
+                               tooltip: "Copy this comment's paragraph as an instruction") {
                         copy(CommentInstructionCompiler.section(for: comment, in: store.fileContent))
                     }
                 }
-                headerButton(icon: "doc.on.clipboard", tooltip: "Copy whole file as instruction") {
+
+                // Primary payoff: whole file + all notes, ready to paste into an AI chat.
+                let count = commentStore.comments.count
+                pillButton(
+                    icon: "sparkles",
+                    label: count > 0 ? "Copy for AI · \(count)" : "Copy for AI",
+                    tooltip: "Copy the whole document with your notes inlined — paste into your AI chat to ask for revisions",
+                    prominent: true
+                ) {
                     copy(CommentInstructionCompiler.wholeFile(comments: commentStore.comments,
                                                               in: store.fileContent))
                 }
@@ -324,17 +330,15 @@ struct MarkdownReaderView: View {
         .overlay(Rectangle().frame(height: 1).foregroundStyle(AppColors.divider), alignment: .bottom)
     }
 
-    private func headerButton(icon: String, tooltip: String, disabled: Bool = false,
-                              action: @escaping () -> Void) -> some View {
+    private func headerButton(icon: String, tooltip: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary))
+                .foregroundStyle(.secondary)
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(disabled)
         .help(tooltip)
     }
 
@@ -342,6 +346,29 @@ struct MarkdownReaderView: View {
     private var selectedComment: Comment? {
         guard let id = selectedCommentID else { return nil }
         return commentStore.comments.first { $0.id == id }
+    }
+
+    /// A compact labeled capsule for the high-value copy actions, so the payoff
+    /// is readable at a glance (not icon-only). `prominent` accent-tints the
+    /// primary "Copy for AI" call to action; the rest read as quiet outlines.
+    private func pillButton(icon: String, label: String, tooltip: String,
+                            prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon).font(.system(size: 10, weight: .semibold))
+                Text(label).font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(prominent ? AppColors.accent : Color.secondary)
+            .padding(.horizontal, 9)
+            .frame(height: 21)
+            .background(Capsule().fill(prominent ? AppColors.accent.opacity(0.13) : Color.clear))
+            .overlay(Capsule().strokeBorder(
+                prominent ? AppColors.accent.opacity(0.35) : AppColors.divider,
+                lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
     }
 
     // MARK: - Drop support

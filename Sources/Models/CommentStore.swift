@@ -105,6 +105,12 @@ final class CommentStore {
         comments.removeAll { $0.id == comment.id }
     }
 
+    /// Removes every comment for the open file (destructive — callers confirm first).
+    func clearAll() {
+        guard !comments.isEmpty else { return }
+        comments.removeAll()
+    }
+
     /// Replaces a comment in place (note edit, status change) by id. No-op if absent.
     func update(_ comment: Comment) {
         guard let idx = comments.firstIndex(where: { $0.id == comment.id }) else { return }

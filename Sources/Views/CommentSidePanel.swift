@@ -10,6 +10,9 @@ struct CommentSidePanel: View {
     let onJump: (UUID) -> Void
     let onEdit: (UUID, String) -> Void
     let onDelete: (Comment) -> Void
+    let onClearAll: () -> Void
+
+    @State private var showClearConfirm = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +27,25 @@ struct CommentSidePanel: View {
                 Text("\(comments.count)")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
+                if !comments.isEmpty {
+                    Button { showClearConfirm = true } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Clear all comments")
+                    .confirmationDialog(
+                        "Clear all \(comments.count) comment\(comments.count == 1 ? "" : "s")?",
+                        isPresented: $showClearConfirm, titleVisibility: .visible
+                    ) {
+                        Button("Clear all", role: .destructive, action: onClearAll)
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This removes every comment for this file. The document itself is untouched.")
+                    }
+                }
             }
             .padding(.horizontal, 10)
             .frame(height: 28)
@@ -76,6 +98,7 @@ private struct CommentRowView: View {
     @State private var isEditing = false
     @State private var draft = ""
     @State private var isHovering = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -103,13 +126,18 @@ private struct CommentRowView: View {
                     .foregroundStyle(.secondary)
                     .help(isEditing ? "Save note" : "Edit note")
 
-                    Button(action: onDelete) {
+                    Button { showDeleteConfirm = true } label: {
                         Image(systemName: "trash")
                             .font(.system(size: 10))
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .help("Delete comment")
+                    .confirmationDialog("Delete this comment?",
+                                        isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                        Button("Delete", role: .destructive, action: onDelete)
+                        Button("Cancel", role: .cancel) {}
+                    }
                 }
             }
 
