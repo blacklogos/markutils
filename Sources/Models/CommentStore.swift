@@ -80,6 +80,27 @@ final class CommentStore {
         comments.append(comment)
     }
 
+    /// Creates and stores a comment from a captured selection + note. Rejects a
+    /// blank note or blank quote (returns nil, persists nothing) so the panel
+    /// never accrues empty/placeholder entries.
+    @discardableResult
+    func addComment(quote: String, prefix: String, suffix: String, note: String) -> Comment? {
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedQuote = quote.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNote.isEmpty, !trimmedQuote.isEmpty else { return nil }
+        let comment = Comment(quote: quote, prefix: prefix, suffix: suffix, note: trimmedNote)
+        add(comment)
+        return comment
+    }
+
+    /// Updates a comment's note text in place. A blank edit is ignored (the
+    /// existing note is kept) — deletion is an explicit, separate action.
+    func updateNote(id: UUID, note: String) {
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let idx = comments.firstIndex(where: { $0.id == id }) else { return }
+        comments[idx].note = trimmed
+    }
+
     func delete(_ comment: Comment) {
         comments.removeAll { $0.id == comment.id }
     }

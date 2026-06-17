@@ -8,9 +8,17 @@ import ClipCore
 // Finder "Open With Clip", or the recents list.
 struct MarkdownReaderView: View {
     @State private var store = MarkdownDocumentStore.shared
+    @State private var commentStore = CommentStore.shared
     @State private var showSidebar = true
+    @State private var showComments = true
     @State private var showCopied = false
     @State private var isDropTargeted = false
+
+    // Capture flow: a pending selection drives the capture popover.
+    @State private var pendingSelection: PendingSelection?
+    @State private var captureNote = ""
+    @State private var selectedCommentID: UUID?
+    @State private var flashAnchorID: UUID?
 
     var body: some View {
         Group {
@@ -136,15 +144,64 @@ struct MarkdownReaderView: View {
                         .padding(.vertical, 4)
                         .background(Color.red.opacity(0.08))
                 }
-                if store.currentFileURL != nil {
-                    HTMLPreviewView(htmlContent: store.renderedHTML)
-                } else {
-                    Text(store.isScanning ? "Scanning folder…" : "Select a file from the sidebar")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+                previewArea
             }
+
+            if store.currentFileURL != nil && showComments {
+                Divider()
+                CommentSidePanel(
+                    comments: commentStore.comments,
+                    selectedID: $selectedCommentID,
+                    onJump: { jump(to: $0) },
+                    onEdit: { commentStore.updateNote(id: $0, note: $1) },
+                    onDelete: { commentStore.delete($0) }
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var previewArea: some View {
+        if store.currentFileURL != nil {
+            AnnotatableHTMLPreviewView(
+                html: store.renderedHTML,
+                comments: commentStore.comments,
+                flashAnchorID: flashAnchorID,
+                onSelect: { quote, prefix, suffix in
+                    captureNote = ""
+                    pendingSelection = PendingSelection(quote: quote, prefix: prefix, suffix: suffix)
+                },
+                onCommentClicked: { selectedCommentID = $0 }
+            )
+            .popover(item: $pendingSelection, arrowEdge: .top) { selection in
+                CommentCapturePopover(
+                    quote: selection.quote,
+                    note: $captureNote,
+                    onSave: {
+                        commentStore.addComment(quote: selection.quote,
+                                                prefix: selection.prefix,
+                                                suffix: selection.suffix,
+                                                note: captureNote)
+                        pendingSelection = nil
+                    },
+                    onCancel: { pendingSelection = nil }
+                )
+            }
+        } else {
+            Text(store.isScanning ? "Scanning folder…" : "Select a file from the sidebar")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // Jump the preview to a comment's highlight and flash it; reset the trigger
+    // shortly after so jumping to the same comment again re-fires.
+    private func jump(to id: UUID) {
+        selectedCommentID = id
+        flashAnchorID = id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if flashAnchorID == id { flashAnchorID = nil }
         }
     }
 
@@ -314,6 +371,15 @@ struct MarkdownReaderView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return false }
         return MarkdownDocumentStore.shared.open(url: url, external: true)
     }
+}
+
+/// A text selection captured from the preview, awaiting a note. Identifiable so
+/// it can drive the capture popover via `.popover(item:)`.
+private struct PendingSelection: Identifiable {
+    let id = UUID()
+    let quote: String
+    let prefix: String
+    let suffix: String
 }
 
 /// One row of the Reader sidebar tree — a selectable file, or a collapsible
