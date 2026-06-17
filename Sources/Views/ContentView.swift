@@ -4,7 +4,7 @@ import SwiftUI
 /// tooltips, ⌘-number shortcuts, and routing targets — add a case here and
 /// every tab surface updates together.
 enum AppTab: Int, CaseIterable {
-    case assets, reader, transform, format, notes
+    case assets, reader, transform, format, notes, diff
 
     var icon: String {
         switch self {
@@ -13,6 +13,7 @@ enum AppTab: Int, CaseIterable {
         case .transform: return "arrow.left.arrow.right"
         case .format:    return "textformat.abc"
         case .notes:     return "square.and.pencil"
+        case .diff:      return "plusminus"
         }
     }
 
@@ -23,6 +24,7 @@ enum AppTab: Int, CaseIterable {
         case .transform: return "Transform"
         case .format:    return "Text Formatter"
         case .notes:     return "Notes"
+        case .diff:      return "Diff"
         }
     }
 
@@ -127,6 +129,7 @@ struct ContentView: View {
         case .transform: QuickActionsView()
         case .format:    SocialMediaFormatterView(text: $socialInput)
         case .notes:     NotesView()
+        case .diff:      DiffView()
         }
     }
 
