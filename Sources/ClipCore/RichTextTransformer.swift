@@ -466,7 +466,7 @@ public struct RichTextTransformer {
     }
 
     // Escapes the five HTML-sensitive characters so user content cannot inject tags.
-    static func htmlEscape(_ text: String) -> String {
+    public static func htmlEscape(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

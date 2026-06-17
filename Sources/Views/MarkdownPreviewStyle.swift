@@ -101,6 +101,18 @@ enum MarkdownPreviewStyle {
             color: var(--fg2);
             letter-spacing: 0.02em;
         }
+        /* Unified line diff (Diff tab). Monospace, git-style red/green gutters. */
+        .diff { font-family: "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.55; }
+        .diff-line { display: flex; white-space: pre-wrap; word-break: break-word; padding: 0 6px; }
+        .diff-line .gutter { flex: 0 0 1.4em; color: var(--fg2); user-select: none; text-align: center; }
+        .diff-line .text { flex: 1; }
+        .diff-line.added   { background: rgba(70,160,90,0.16); }
+        .diff-line.added .gutter   { color: #3f9d54; }
+        .diff-line.removed { background: rgba(200,70,70,0.15); }
+        .diff-line.removed .gutter { color: #c64646; }
+        .diff-line.equal   { color: var(--fg2); }
+        .diff-empty { color: var(--fg2); font-family: -apple-system, sans-serif;
+                      font-size: 12px; padding: 14px 6px; }
         """
 
     /// Wraps rendered markdown HTML in the full document template.
