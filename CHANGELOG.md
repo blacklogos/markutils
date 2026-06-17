@@ -14,7 +14,11 @@ All notable changes to Clip are documented here.
 - Folder mode: collapsible sidebar file tree of all markdown files (hidden files skipped, empty folders pruned)
 - Live reload — files edited in another app refresh the preview automatically (survives atomic saves)
 - One-click actions: copy as HTML, copy as rich text, edit in Transform tab, reveal in Finder
-- **Comments → instruction export**: drag-select text in the preview to attach a free-text note; manage notes in a side panel (click a row to jump to and flash its highlight, edit inline, delete). Copy the enclosing section or the whole file — source preserved verbatim with each note inlined as a `💬 INSTRUCTION` callout — to paste into an external AI agent. Comments persist in a per-file sidecar under Application Support; the source `.md` is never modified. On reload, comments re-anchor by quoted text + context; a quote that no longer matches is flagged "needs review" (never silently dropped) and appended to the copied output.
+- **Comments → instruction export**: drag-select text in the preview to attach a free-text note; manage notes in a side panel (click a row to jump to and flash its highlight, edit inline, delete). Copy the enclosing section or the whole file — source preserved verbatim with each note inlined as a `💬 INSTRUCTION` callout — to paste into an external AI agent. Comments persist in a per-file sidecar under Application Support; the source `.md` is never modified. On reload, comments re-anchor by quoted text + context; a quote that no longer matches is flagged "needs review" (never silently dropped) and appended to the copied output. Deleting a comment (or "Clear all") now asks to confirm first.
+
+**Diff Tab** (⌘6)
+- Compare two markdown texts side by side with a live line-level unified diff (git-style red/green). Pairs with the Reader's "Copy for AI" loop: paste the original on the left, the agent's revised version on the right, and review exactly what changed.
+- Swap sides and clear both; large inputs guarded.
 
 **Markdown engine upgrades** (Reader, Transform preview, Notes, CLI)
 - Fenced code blocks (``` and ~~~) with HTML escaping
