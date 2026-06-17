@@ -14,7 +14,7 @@ struct CommentSidePanel: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
-                Image(systemName: "bubble.left.and.text.bubble.right")
+                Image(systemName: "text.bubble")
                     .font(.system(size: 10))
                     .foregroundStyle(AppColors.accent)
                 Text("COMMENTS")

@@ -54,7 +54,12 @@ final class MarkdownDocumentStore {
     private var fileWatcher: DispatchSourceFileSystemObject?
     private var pendingReload: DispatchWorkItem?
 
-    init() {
+    /// Sidecar comment store for the open document. Injectable so tests can point
+    /// it at a temp directory instead of Application Support.
+    let commentStore: CommentStore
+
+    init(commentStore: CommentStore = .shared) {
+        self.commentStore = commentStore
         // Load recents without touching the filesystem (paths on unmounted
         // volumes can block on automount); prune dead entries off-main.
         let candidates = (UserDefaults.standard.stringArray(forKey: Self.recentsKey) ?? [])
@@ -115,6 +120,10 @@ final class MarkdownDocumentStore {
             loadError = "Could not read \(url.lastPathComponent)."
             return false
         }
+        // Load this file's comments BEFORE setContent so the re-anchor pass runs
+        // against the right sidecar (covers both initial open and live reload —
+        // openFile is the single funnel for both).
+        commentStore.load(for: url)
         setContent(text)
         currentFileURL = url
         loadError = nil
@@ -142,6 +151,18 @@ final class MarkdownDocumentStore {
     private func setContent(_ text: String) {
         fileContent = text
         renderedHTML = RichTextTransformer.markdownToHTML(text)
+        reanchorComments(in: text)
+    }
+
+    /// Re-anchors the open file's comments against new content: found quotes stay
+    /// `active`, vanished ones flip to `needsReview` — never deleted (R12, R13).
+    /// Only writes back when a status actually changed, to avoid needless saves.
+    private func reanchorComments(in text: String) {
+        guard commentStore.currentFileURL != nil, !commentStore.comments.isEmpty else { return }
+        let updated = commentStore.comments.map { CommentAnchor.reanchor($0, in: text) }
+        if updated != commentStore.comments {
+            commentStore.replaceAll(updated)
+        }
     }
 
     /// Accepts the folder immediately and scans it off the main thread —

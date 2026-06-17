@@ -274,6 +274,30 @@ struct MarkdownReaderView: View {
                     .transition(.opacity)
             }
 
+            if store.currentFileURL != nil {
+                headerButton(
+                    icon: showComments ? "text.bubble.fill" : "text.bubble",
+                    tooltip: showComments ? "Hide comments" : "Show comments"
+                ) {
+                    withAnimation(.easeInOut(duration: 0.15)) { showComments.toggle() }
+                }
+                headerButton(
+                    icon: "quote.bubble",
+                    tooltip: selectedComment == nil
+                        ? "Select a comment to copy its section"
+                        : "Copy this section as instruction",
+                    disabled: selectedComment == nil
+                ) {
+                    if let comment = selectedComment {
+                        copy(CommentInstructionCompiler.section(for: comment, in: store.fileContent))
+                    }
+                }
+                headerButton(icon: "doc.on.clipboard", tooltip: "Copy whole file as instruction") {
+                    copy(CommentInstructionCompiler.wholeFile(comments: commentStore.comments,
+                                                              in: store.fileContent))
+                }
+            }
+
             headerButton(icon: "pencil", tooltip: "Edit in Transform tab") {
                 MarkdownPreviewRouter.shared.request(store.fileContent)
             }
@@ -300,16 +324,24 @@ struct MarkdownReaderView: View {
         .overlay(Rectangle().frame(height: 1).foregroundStyle(AppColors.divider), alignment: .bottom)
     }
 
-    private func headerButton(icon: String, tooltip: String, action: @escaping () -> Void) -> some View {
+    private func headerButton(icon: String, tooltip: String, disabled: Bool = false,
+                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary))
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
         .help(tooltip)
+    }
+
+    /// The currently-selected comment, if any — drives "Copy this section".
+    private var selectedComment: Comment? {
+        guard let id = selectedCommentID else { return nil }
+        return commentStore.comments.first { $0.id == id }
     }
 
     // MARK: - Drop support
