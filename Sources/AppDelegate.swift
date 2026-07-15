@@ -141,6 +141,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let monitor = notesPanelLocalHotkeyMonitor { NSEvent.removeMonitor(monitor) }
         ClipboardMonitor.shared.stopMonitoring()
         NoteStore.shared.flushPendingSave()
+        AssetStore.shared.flushPendingSave()
     }
 
     // Reads hotkey config from UserDefaults so the combination can be changed at runtime.
