@@ -2,7 +2,7 @@
 name: AssetStore rewrites entire vault JSON (incl. base64 image blobs) on every mutation
 description: assets.didSet synchronously encodes and writes the whole vault on the main thread — 40 screenshots ≈ 107 MB JSON written per add/delete/rename
 type: todo
-status: pending
+status: complete
 priority: p2
 issue_id: "023"
 tags: [code-review, performance, persistence]

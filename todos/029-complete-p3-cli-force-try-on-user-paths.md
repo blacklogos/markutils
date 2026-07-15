@@ -2,7 +2,7 @@
 name: CLI export/import force-try on user-supplied --file paths
 description: try! on file reads/writes crashes with a trap instead of clean error + exit code on unwritable or malformed paths
 type: todo
-status: pending
+status: complete
 priority: p3
 issue_id: "029"
 tags: [code-review, quality, cli]

@@ -2,7 +2,7 @@
 name: Three LCS implementations; smart mode runs up to three passes per line pair
 description: TextDiff.diff, changedFlags, and lcsLength are the same recurrence three times; smartMode computes LCS length then changedFlags recomputes it; lineCount semantics duplicated in three places
 type: todo
-status: pending
+status: complete
 priority: p2
 issue_id: "024"
 tags: [code-review, architecture, performance, diff, quality]

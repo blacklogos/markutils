@@ -2,7 +2,7 @@
 name: Command injection into root AppleScript via unescaped bundle path in CLI installer
 description: installCLI embeds a POSIX-quoted path into an AppleScript double-quoted string without escaping " or \ — a bundle path containing a quote executes attacker fragments as root
 type: todo
-status: pending
+status: complete
 priority: p2
 issue_id: "022"
 tags: [code-review, security]

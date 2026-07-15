@@ -2,7 +2,7 @@
 name: Diff preview fully reloads WKWebView per change, resetting scroll
 description: Every keystroke rebuilds ~1 MB of row HTML on the main thread and loadHTMLString reparses the document and jumps scroll to top
 type: todo
-status: pending
+status: complete
 priority: p1
 issue_id: "021"
 tags: [code-review, performance, diff, ux]

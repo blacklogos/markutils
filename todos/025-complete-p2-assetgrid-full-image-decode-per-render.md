@@ -2,7 +2,7 @@
 name: AssetGridView decodes full-size images in body per cell per evaluation
 description: NSImage(data:) inside body re-decodes full bitmaps (48 MB for a 4000×3000 shot) to draw 80×80 thumbnails on every re-evaluation
 type: todo
-status: pending
+status: complete
 priority: p2
 issue_id: "025"
 tags: [code-review, performance, assets]

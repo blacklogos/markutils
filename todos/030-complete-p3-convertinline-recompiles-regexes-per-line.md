@@ -2,7 +2,7 @@
 name: UnicodeTextFormatter.convertInline recompiles 7 regexes per line
 description: 500-line MD→Unicode conversion = ~3500 NSRegularExpression compiles; hoist to static lets
 type: todo
-status: pending
+status: complete
 priority: p3
 issue_id: "030"
 tags: [code-review, performance, formatter]

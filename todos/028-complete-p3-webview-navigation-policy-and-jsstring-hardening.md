@@ -2,7 +2,7 @@
 name: WebView hardening — navigation policy + jsString U+2028/29 escapes
 description: Preview WKWebViews navigate in-place to http(s) links from untrusted markdown (phishing surface); jsString should escape U+2028/2029 defensively
 type: todo
-status: pending
+status: complete
 priority: p3
 issue_id: "028"
 tags: [code-review, security, webview]

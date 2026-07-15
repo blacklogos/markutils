@@ -2,7 +2,7 @@
 name: Dead code sweep — diff pipeline and formatter leftovers
 description: isIdentical (O(n·m) equivalent of a == b, zero prod callers), styleMap unreachable branch, unused Precision conformances, dead iso8601 line, dual clipboard strategies
 type: todo
-status: pending
+status: complete
 priority: p3
 issue_id: "027"
 tags: [code-review, quality, cleanup]

@@ -2,7 +2,7 @@
 name: Diff preview HTML is a full document nested inside another document
 description: DiffHTMLRenderer and tooLargeHTML call MarkdownPreviewStyle.page(), then HTMLPreviewView wraps in page() again — WebView receives <body><!DOCTYPE html>… and renders only because WebKit repairs it
 type: todo
-status: pending
+status: complete
 priority: p1
 issue_id: "019"
 tags: [code-review, quality, diff, uncommitted]

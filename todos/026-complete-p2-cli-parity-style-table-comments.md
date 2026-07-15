@@ -2,7 +2,7 @@
 name: CLI parity gaps — style/unstyle, table conversions, comment instruction export
 description: UI-only capabilities whose ClipCore APIs are already public — three thin subcommands close all P2 gaps
 type: todo
-status: pending
+status: complete
 priority: p2
 issue_id: "026"
 tags: [code-review, agent-native, cli]

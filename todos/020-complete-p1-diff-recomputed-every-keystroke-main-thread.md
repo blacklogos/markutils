@@ -2,7 +2,7 @@
 name: Diff LCS recomputed synchronously in body on every keystroke
 description: TextDiff.annotatedDiff runs inside DiffView.body per keystroke — measured 2.8 s/keystroke debug (175 ms release) at the 4000-line cap, 128 MB DP table allocated and freed each time
 type: todo
-status: pending
+status: complete
 priority: p1
 issue_id: "020"
 tags: [code-review, performance, diff]

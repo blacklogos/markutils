@@ -2,7 +2,7 @@
 name: CLAUDE.md architecture section missing Diff tab (⌘6)
 description: Doc lists tabs 0-4 / ⌘1-⌘5; ContentView now has a sixth Diff tab on ⌘6
 type: todo
-status: pending
+status: complete
 priority: p3
 issue_id: "031"
 tags: [code-review, docs]
