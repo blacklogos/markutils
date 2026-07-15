@@ -268,17 +268,34 @@ case "export":
         exit(1)
     }
 
-    let data = try! Data(contentsOf: vaultURL)
+    let data: Data
+    do {
+        data = try Data(contentsOf: vaultURL)
+    } catch {
+        fputs("clip: cannot read vault: \(error.localizedDescription)\n", stderr)
+        exit(2)
+    }
 
     // Pretty-print: decode then re-encode with formatting
     if let assets = try? JSONDecoder().decode([VaultAsset].self, from: data) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let pretty = try! encoder.encode(assets)
-        let jsonString = String(data: pretty, encoding: .utf8)!
+        let jsonString: String
+        do {
+            let pretty = try encoder.encode(assets)
+            jsonString = String(data: pretty, encoding: .utf8)!
+        } catch {
+            fputs("clip: cannot encode vault JSON: \(error.localizedDescription)\n", stderr)
+            exit(2)
+        }
 
         if let filePath = fileArgument(remainingArgs) {
-            try! jsonString.write(toFile: filePath, atomically: true, encoding: .utf8)
+            do {
+                try jsonString.write(toFile: filePath, atomically: true, encoding: .utf8)
+            } catch {
+                fputs("clip: cannot write to \(filePath): \(error.localizedDescription)\n", stderr)
+                exit(2)
+            }
             fputs("Exported \(assets.count) assets to \(filePath)\n", stderr)
         } else {
             print(jsonString, terminator: "")
@@ -286,7 +303,12 @@ case "export":
     } else {
         // Fallback: output raw data
         if let filePath = fileArgument(remainingArgs) {
-            try! data.write(to: URL(fileURLWithPath: filePath))
+            do {
+                try data.write(to: URL(fileURLWithPath: filePath))
+            } catch {
+                fputs("clip: cannot write to \(filePath): \(error.localizedDescription)\n", stderr)
+                exit(2)
+            }
             fputs("Exported vault to \(filePath)\n", stderr)
         } else {
             FileHandle.standardOutput.write(data)
@@ -302,7 +324,12 @@ case "import":
             fputs("clip: file not found: \(filePath)\n", stderr)
             exit(2)
         }
-        inputData = try! Data(contentsOf: URL(fileURLWithPath: filePath))
+        do {
+            inputData = try Data(contentsOf: URL(fileURLWithPath: filePath))
+        } catch {
+            fputs("clip: cannot read \(filePath): \(error.localizedDescription)\n", stderr)
+            exit(2)
+        }
     } else {
         inputData = FileHandle.standardInput.readDataToEndOfFile()
     }
@@ -315,8 +342,13 @@ case "import":
 
     let vaultURL = vaultFileURL()
     let vaultDir = vaultURL.deletingLastPathComponent()
-    try! FileManager.default.createDirectory(at: vaultDir, withIntermediateDirectories: true)
-    try! inputData.write(to: vaultURL)
+    do {
+        try FileManager.default.createDirectory(at: vaultDir, withIntermediateDirectories: true)
+        try inputData.write(to: vaultURL)
+    } catch {
+        fputs("clip: cannot write vault: \(error.localizedDescription)\n", stderr)
+        exit(2)
+    }
     fputs("Vault imported successfully.\n", stderr)
 
 case "search":
