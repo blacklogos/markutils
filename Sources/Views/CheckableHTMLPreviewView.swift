@@ -32,6 +32,7 @@ struct CheckableHTMLPreviewView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.navigationDelegate = context.coordinator
         return webView
     }
 
@@ -50,12 +51,17 @@ struct CheckableHTMLPreviewView: NSViewRepresentable {
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var onToggle: (Int, Bool) -> Void
         var lastHTML = ""
 
         init(onToggle: @escaping (Int, Bool) -> Void) {
             self.onToggle = onToggle
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(PreviewNavigationPolicy.decide(navigationAction))
         }
 
         func userContentController(_ controller: WKUserContentController,

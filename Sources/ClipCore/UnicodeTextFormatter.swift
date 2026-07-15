@@ -304,24 +304,33 @@ public struct UnicodeTextFormatter {
 
     // MARK: - Helpers
 
+    // Compiled once — convertInline runs per line, so per-call compilation would
+    // cost ~7 regex compiles per line of converted markdown.
+    private static let boldItalicRegex = try! NSRegularExpression(pattern: "\\*\\*\\*(.+?)\\*\\*\\*")
+    private static let boldRegex       = try! NSRegularExpression(pattern: "\\*\\*(.+?)\\*\\*")
+    private static let italicStarRegex = try! NSRegularExpression(pattern: "(?<!\\*)\\*([^*\n]+?)\\*(?!\\*)")
+    private static let italicUnderRegex = try! NSRegularExpression(pattern: "(?<![\\w_])_([^_\n]+?)_(?![\\w_])")
+    private static let codeRegex       = try! NSRegularExpression(pattern: "`([^`\n]+)`")
+    private static let strikeRegex     = try! NSRegularExpression(pattern: "~~(.+?)~~")
+    private static let linkRegex       = try! NSRegularExpression(pattern: "\\[([^\\]]+)\\]\\(([^)]+)\\)")
+
     private static func convertInline(_ text: String, mode: VietnameseMode = .accent) -> String {
         var s = text
 
         // Process in order: longest/specific patterns first to avoid partial matches
-        s = regexApply("\\*\\*\\*(.+?)\\*\\*\\*", in: s) { apply(.boldItalic, to: $0, mode: mode) }
-        s = regexApply("\\*\\*(.+?)\\*\\*",        in: s) { apply(.bold, to: $0, mode: mode) }
-        s = regexApply("(?<!\\*)\\*([^*\n]+?)\\*(?!\\*)", in: s) { apply(.italic, to: $0, mode: mode) }
-        s = regexApply("(?<![\\w_])_([^_\n]+?)_(?![\\w_])", in: s) { apply(.italic, to: $0, mode: mode) }
-        s = regexApply("`([^`\n]+)`",             in: s) { apply(.monospace, to: $0, mode: mode) }
-        s = regexApply("~~(.+?)~~",               in: s) { apply(.strikethrough, to: $0) }
+        s = regexApply(boldItalicRegex,  in: s) { apply(.boldItalic, to: $0, mode: mode) }
+        s = regexApply(boldRegex,        in: s) { apply(.bold, to: $0, mode: mode) }
+        s = regexApply(italicStarRegex,  in: s) { apply(.italic, to: $0, mode: mode) }
+        s = regexApply(italicUnderRegex, in: s) { apply(.italic, to: $0, mode: mode) }
+        s = regexApply(codeRegex,        in: s) { apply(.monospace, to: $0, mode: mode) }
+        s = regexApply(strikeRegex,      in: s) { apply(.strikethrough, to: $0) }
         s = regexApplyLink(s)
 
         return s
     }
 
     /// Applies `transform` to capture group 1 of each match, iterating right-to-left for safe NSRange reuse.
-    private static func regexApply(_ pattern: String, in text: String, transform: (String) -> String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return text }
+    private static func regexApply(_ regex: NSRegularExpression, in text: String, transform: (String) -> String) -> String {
         let nsText = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length)).reversed()
         var result = text
@@ -335,7 +344,7 @@ public struct UnicodeTextFormatter {
 
     /// Converts [text](url) links → "text (url)"
     private static func regexApplyLink(_ text: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: "\\[([^\\]]+)\\]\\(([^)]+)\\)") else { return text }
+        let regex = linkRegex
         let nsText = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length)).reversed()
         var result = text

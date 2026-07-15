@@ -103,10 +103,14 @@ enum DiffHTMLRenderer {
     }
 
     /// JSON-encodes a Swift string as a JS string literal; "</" escaped so pasted
-    /// "</script>" content cannot terminate the script element.
+    /// "</script>" content cannot terminate the script element, and U+2028/2029
+    /// escaped so the literal stays valid on any JS engine.
     private static func jsString(_ s: String) -> String {
         let data = (try? JSONEncoder().encode([s])) ?? Data("[\"\"]".utf8)
         let json = String(data: data, encoding: .utf8) ?? "[\"\"]"
-        return String(json.dropFirst().dropLast()).replacingOccurrences(of: "</", with: "<\\/")
+        return String(json.dropFirst().dropLast())
+            .replacingOccurrences(of: "</", with: "<\\/")
+            .replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+            .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
     }
 }

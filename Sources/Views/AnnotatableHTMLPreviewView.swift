@@ -81,7 +81,7 @@ struct AnnotatableHTMLPreviewView: NSViewRepresentable {
         }
         guard let data = try? JSONSerialization.data(withJSONObject: array),
               let string = String(data: data, encoding: .utf8) else { return "[]" }
-        return string
+        return escapeForJS(string)
     }
 
     /// Encodes a single string as a JS string literal (used for the flash id).
@@ -89,7 +89,14 @@ struct AnnotatableHTMLPreviewView: NSViewRepresentable {
         guard let data = try? JSONSerialization.data(withJSONObject: [s]),
               let json = String(data: data, encoding: .utf8) else { return "\"\"" }
         // ["x"] → "x"
-        return String(json.dropFirst().dropLast())
+        return Self.escapeForJS(String(json.dropFirst().dropLast()))
+    }
+
+    /// U+2028/2029 are legal in JSON but line terminators in older JS grammars;
+    /// escape them so evaluateJavaScript payloads stay engine-independent.
+    private static func escapeForJS(_ s: String) -> String {
+        s.replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+            .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
     }
 
     // MARK: - Coordinator
@@ -110,6 +117,11 @@ struct AnnotatableHTMLPreviewView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.evaluateJavaScript("clipApplyHighlights(\(pendingAnchors));", completionHandler: nil)
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(PreviewNavigationPolicy.decide(navigationAction))
         }
 
         func userContentController(_ controller: WKUserContentController,

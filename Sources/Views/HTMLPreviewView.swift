@@ -48,5 +48,10 @@ struct HTMLPreviewView: NSViewRepresentable {
             webView.evaluateJavaScript("window.scrollTo(0, \(pendingScrollY))")
             pendingScrollY = 0
         }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(PreviewNavigationPolicy.decide(navigationAction))
+        }
     }
 }
