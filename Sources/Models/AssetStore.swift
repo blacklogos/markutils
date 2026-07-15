@@ -6,12 +6,15 @@ class AssetStore {
     static let shared = AssetStore()
     var assets: [Asset] = [] {
         didSet {
-            save()
+            scheduleSave()
         }
     }
-    
+
     private let fileURL: URL
-    
+    // Serial queue keeps writes ordered; the work item is the debounce handle.
+    @ObservationIgnored private let saveQueue = DispatchQueue(label: "clip.assetstore.save", qos: .utility)
+    @ObservationIgnored private var pendingSave: DispatchWorkItem?
+
     private init() {
         // Setup file URL
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -49,15 +52,42 @@ class AssetStore {
     }
 
     /// Call after mutating an asset's properties (name, etc.) to persist the change.
+    /// Debounced: bursts of mutations coalesce into one background write.
     func save() {
+        scheduleSave()
+    }
+
+    /// Write any pending changes immediately (call from applicationWillTerminate).
+    func flushPendingSave() {
+        pendingSave?.cancel()
+        pendingSave = nil
+        let snapshot = assets
+        // sync also drains any in-flight write so the app can't exit mid-save
+        saveQueue.sync { self.persist(snapshot) }
+    }
+
+    // Full-vault JSON can be tens of MB with inline image data, so each mutation
+    // must not encode+write synchronously on main. Snapshot on the mutating
+    // (main) thread, then encode and write once per 500ms burst off main.
+    private func scheduleSave() {
+        pendingSave?.cancel()
+        let snapshot = assets
+        let work = DispatchWorkItem { [weak self] in
+            self?.persist(snapshot)
+        }
+        pendingSave = work
+        saveQueue.asyncAfter(deadline: .now() + 0.5, execute: work)
+    }
+
+    private func persist(_ snapshot: [Asset]) {
         do {
-            let data = try JSONEncoder().encode(assets)
-            try data.write(to: fileURL)
+            let data = try JSONEncoder().encode(snapshot)
+            try data.write(to: fileURL, options: .atomic)
         } catch {
             print("Failed to save assets: \(error)")
         }
     }
-    
+
     private func load() {
         do {
             guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
