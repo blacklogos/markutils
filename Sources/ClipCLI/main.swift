@@ -417,7 +417,7 @@ case "notes":
         let notes = loadNotes()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        // No dateEncodingStrategy needed: values below are pre-formatted strings.
         if let out = try? encoder.encode(notes.map { ["id": $0.id.uuidString, "date": ISO8601DateFormatter().string(from: $0.date), "preview": String($0.body.prefix(80))] }) {
             print(String(data: out, encoding: .utf8)!, terminator: "")
         }
