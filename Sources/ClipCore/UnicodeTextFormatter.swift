@@ -127,13 +127,17 @@ public struct UnicodeTextFormatter {
         return map
     }()
 
-    // Reverse map: styled → ASCII (built from all forward maps, used in revertToPlain)
-    private static let reverseMap: [Character: Character] = {
-        var map: [Character: Character] = [:]
+    // Reverse map keyed by scalar: styled → ASCII. Scalar-level so accent-styled
+    // graphemes (styled base + combining marks form ONE Character) still revert.
+    private static let reverseScalarMap: [Unicode.Scalar: Unicode.Scalar] = {
+        var map: [Unicode.Scalar: Unicode.Scalar] = [:]
         let forwardMaps = [boldMap, italicMap, boldItalicMap, monospaceMap, scriptMap, smallCapsMap]
         for fwd in forwardMaps {
             for (plain, styled) in fwd {
-                map[styled] = plain
+                // All mapped characters are single-scalar on both sides
+                if let p = plain.unicodeScalars.first, let s = styled.unicodeScalars.first {
+                    map[s] = p
+                }
             }
         }
         return map
@@ -141,34 +145,55 @@ public struct UnicodeTextFormatter {
 
     // MARK: - Apply Style
 
-    /// Applies a Unicode style to all alphanumeric characters in `text`. Non-mapped chars pass through unchanged.
-    public static func apply(_ style: Style, to text: String) -> String {
+    /// Applies a Unicode style to all alphanumeric characters in `text`.
+    /// `mode` controls handling of Vietnamese/accented letters (see VietnameseMode).
+    public static func apply(_ style: Style, to text: String, mode: VietnameseMode = .accent) -> String {
         switch style {
-        case .bold:        return text.map { boldMap[$0].map(String.init) ?? String($0) }.joined()
-        case .italic:      return text.map { italicMap[$0].map(String.init) ?? String($0) }.joined()
-        case .boldItalic:  return text.map { boldItalicMap[$0].map(String.init) ?? String($0) }.joined()
-        case .monospace:   return text.map { monospaceMap[$0].map(String.init) ?? String($0) }.joined()
-        case .script:      return text.map { scriptMap[$0].map(String.init) ?? String($0) }.joined()
-        case .smallCaps:   return text.map { smallCapsMap[$0].map(String.init) ?? String($0) }.joined()
         case .underline:
-            // Insert combining underline (U+0332) after each character
-            return text.unicodeScalars.map { String($0) + "\u{0332}" }.joined()
+            // Combining underline (U+0332) after each letter/digit grapheme
+            return addCombiningMark("\u{0332}", to: text)
         case .strikethrough:
-            // Insert combining strikethrough (U+0336) after each character
-            return text.unicodeScalars.map { String($0) + "\u{0336}" }.joined()
+            // Combining strikethrough (U+0336) after each letter/digit grapheme
+            return addCombiningMark("\u{0336}", to: text)
+        default:
+            let map = styleMap(for: style)
+            switch mode {
+            case .accent:  return applyAccent(map: map, to: text)
+            case .natural: return applyNatural(map: map, to: text)
+            }
+        }
+    }
+
+    static func styleMap(for style: Style) -> [Character: Character] {
+        switch style {
+        case .bold:          return boldMap
+        case .italic:        return italicMap
+        case .boldItalic:    return boldItalicMap
+        case .monospace:     return monospaceMap
+        case .script:        return scriptMap
+        case .smallCaps:     return smallCapsMap
+        case .underline, .strikethrough: return [:]  // handled via combining marks
         }
     }
 
     // MARK: - Revert to Plain
 
-    /// Strips all Unicode styling (bold/italic/mono/script/smallCaps/underline/strikethrough) back to ASCII.
+    /// Strips all Unicode styling (bold/italic/mono/script/smallCaps/underline/strikethrough)
+    /// back to plain text. Accent-styled Vietnamese reverts to precomposed (NFC) form.
     public static func revertToPlain(_ text: String) -> String {
-        // Remove combining overlay characters first
-        let stripped = text
-            .replacingOccurrences(of: "\u{0332}", with: "")
-            .replacingOccurrences(of: "\u{0336}", with: "")
-        // Reverse-map styled chars to plain ASCII
-        return String(stripped.map { reverseMap[$0] ?? $0 })
+        var scalars: [Unicode.Scalar] = []
+        for scalar in text.unicodeScalars {
+            if scalar.value == 0x0332 || scalar.value == 0x0336 { continue }  // underline/strike overlays
+            scalars.append(reverseScalarMap[scalar] ?? scalar)
+        }
+        var result = String(String.UnicodeScalarView(scalars))
+        // Reconstruct đ/Đ from the stroked-d approximation, drop stray overlays
+        result = result
+            .replacingOccurrences(of: "d\u{0335}", with: "đ")
+            .replacingOccurrences(of: "D\u{0335}", with: "Đ")
+            .replacingOccurrences(of: "\u{0335}", with: "")
+        // Recompose base + combining marks into precomposed letters (mắt, not m + a + marks + t)
+        return result.precomposedStringWithCanonicalMapping
     }
 
     // MARK: - Markdown → Unicode
@@ -176,7 +201,7 @@ public struct UnicodeTextFormatter {
     /// Converts Markdown-formatted text to Unicode-styled plain text suitable for social media.
     /// Handles: headers, bold/italic/monospace/strikethrough inline, bullet lists, blockquotes,
     /// horizontal rules, links, and embedded tables.
-    public static func markdownToUnicode(_ markdown: String) -> String {
+    public static func markdownToUnicode(_ markdown: String, mode: VietnameseMode = .accent) -> String {
         var output = ""
         let lines = markdown.components(separatedBy: .newlines)
         var i = 0
@@ -205,44 +230,44 @@ public struct UnicodeTextFormatter {
             // Headers
             if trimmed.hasPrefix("### ") {
                 let content = String(trimmed.dropFirst(4))
-                output += apply(.italic, to: content) + "\n"
+                output += apply(.italic, to: content, mode: mode) + "\n"
                 i += 1; continue
             }
             if trimmed.hasPrefix("## ") {
                 let content = String(trimmed.dropFirst(3))
-                output += apply(.bold, to: content) + "\n"
+                output += apply(.bold, to: content, mode: mode) + "\n"
                 i += 1; continue
             }
             if trimmed.hasPrefix("# ") {
                 let content = String(trimmed.dropFirst(2))
-                output += apply(.bold, to: content.uppercased()) + "\n"
+                output += apply(.bold, to: content.uppercased(), mode: mode) + "\n"
                 i += 1; continue
             }
 
             // Blockquote
             if trimmed.hasPrefix("> ") {
-                output += "│ " + convertInline(String(trimmed.dropFirst(2))) + "\n"
+                output += "│ " + convertInline(String(trimmed.dropFirst(2)), mode: mode) + "\n"
                 i += 1; continue
             }
             if trimmed.hasPrefix(">") {
-                output += "│ " + convertInline(String(trimmed.dropFirst(1))) + "\n"
+                output += "│ " + convertInline(String(trimmed.dropFirst(1)), mode: mode) + "\n"
                 i += 1; continue
             }
 
             // Unordered list
             if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ") {
-                output += "• " + convertInline(String(trimmed.dropFirst(2))) + "\n"
+                output += "• " + convertInline(String(trimmed.dropFirst(2)), mode: mode) + "\n"
                 i += 1; continue
             }
 
             // Ordered list: keep numbering, just convert inline
             if trimmed.range(of: "^\\d+\\. ", options: .regularExpression) != nil {
-                output += convertInline(trimmed) + "\n"
+                output += convertInline(trimmed, mode: mode) + "\n"
                 i += 1; continue
             }
 
             // Regular line
-            output += convertInline(trimmed) + "\n"
+            output += convertInline(trimmed, mode: mode) + "\n"
             i += 1
         }
 
@@ -286,15 +311,15 @@ public struct UnicodeTextFormatter {
 
     // MARK: - Helpers
 
-    private static func convertInline(_ text: String) -> String {
+    private static func convertInline(_ text: String, mode: VietnameseMode = .accent) -> String {
         var s = text
 
         // Process in order: longest/specific patterns first to avoid partial matches
-        s = regexApply("\\*\\*\\*(.+?)\\*\\*\\*", in: s) { apply(.boldItalic, to: $0) }
-        s = regexApply("\\*\\*(.+?)\\*\\*",        in: s) { apply(.bold, to: $0) }
-        s = regexApply("(?<!\\*)\\*([^*\n]+?)\\*(?!\\*)", in: s) { apply(.italic, to: $0) }
-        s = regexApply("(?<![\\w_])_([^_\n]+?)_(?![\\w_])", in: s) { apply(.italic, to: $0) }
-        s = regexApply("`([^`\n]+)`",             in: s) { apply(.monospace, to: $0) }
+        s = regexApply("\\*\\*\\*(.+?)\\*\\*\\*", in: s) { apply(.boldItalic, to: $0, mode: mode) }
+        s = regexApply("\\*\\*(.+?)\\*\\*",        in: s) { apply(.bold, to: $0, mode: mode) }
+        s = regexApply("(?<!\\*)\\*([^*\n]+?)\\*(?!\\*)", in: s) { apply(.italic, to: $0, mode: mode) }
+        s = regexApply("(?<![\\w_])_([^_\n]+?)_(?![\\w_])", in: s) { apply(.italic, to: $0, mode: mode) }
+        s = regexApply("`([^`\n]+)`",             in: s) { apply(.monospace, to: $0, mode: mode) }
         s = regexApply("~~(.+?)~~",               in: s) { apply(.strikethrough, to: $0) }
         s = regexApplyLink(s)
 

@@ -24,6 +24,7 @@ func printUsage() {
 
     OPTIONS:
       -c, --clipboard  Read from clipboard; write result back to clipboard
+      -n, --natural    md2social: keep Vietnamese words plain, style ASCII only
       -f, --file PATH  Read/write to file instead of stdin/stdout (export/import)
       -h, --help       Show this help message
 
@@ -52,7 +53,14 @@ func printSubcommandHelp(_ sub: String) {
     case "html2md":
         fputs("clip html2md — HTML → Markdown. Full documents supported; <head> is stripped.\n", stderr)
     case "md2social":
-        fputs("clip md2social — Markdown → Unicode-styled text for social media platforms.\n", stderr)
+        fputs("""
+        clip md2social — Markdown → Unicode-styled text for social media platforms.
+
+        Vietnamese handling:
+          default        accent mode: tone marks re-attached over styled letters
+          -n, --natural  natural mode: words with tone marks stay plain, ASCII styled
+
+        """, stderr)
     default:
         break
     }
@@ -183,7 +191,8 @@ case "md2html", "html2md", "md2social":
     case "html2md":
         output = RichTextTransformer.htmlToMarkdown(stripHTMLShell(input))
     case "md2social":
-        output = UnicodeTextFormatter.markdownToUnicode(input)
+        let natural = remainingArgs.contains("--natural") || remainingArgs.contains("-n")
+        output = UnicodeTextFormatter.markdownToUnicode(input, mode: natural ? .natural : .accent)
     default:
         fatalError("unreachable")
     }

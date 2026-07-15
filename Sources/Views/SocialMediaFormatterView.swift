@@ -16,6 +16,10 @@ struct SocialMediaFormatterView: View {
 
     @State private var showCopied = false
 
+    // Vietnamese natural mode: keep accented words plain, style ASCII tokens only
+    @State private var vietnameseNatural = false
+    private var vnMode: UnicodeTextFormatter.VietnameseMode { vietnameseNatural ? .natural : .accent }
+
     var body: some View {
         VStack(spacing: 0) {
             // ── Single toolbar row ────────────────────────────────────────
@@ -33,8 +37,8 @@ struct SocialMediaFormatterView: View {
                 if selectedMode == 0 {
                     // ── Format mode: primary actions ──
                     Group {
-                        Button(action: { transformSelection { UnicodeTextFormatter.apply(.bold, to: $0) } })    { Text("𝐁") }
-                        Button(action: { transformSelection { UnicodeTextFormatter.apply(.italic, to: $0) } })  { Text("𝘐") }
+                        Button(action: { transformSelection { UnicodeTextFormatter.apply(.bold, to: $0, mode: vnMode) } })    { Text("𝐁") }
+                        Button(action: { transformSelection { UnicodeTextFormatter.apply(.italic, to: $0, mode: vnMode) } })  { Text("𝘐") }
                         Button(action: { transformSelection { $0.uppercased() } })  { Text("ABC") }
                         Button(action: { transformSelection { $0.capitalized } })   { Text("Abc") }
                     }
@@ -95,12 +99,12 @@ struct SocialMediaFormatterView: View {
                     Divider().frame(height: 20)
 
                     Group {
-                        Button("𝐁")  { transformSelection { UnicodeTextFormatter.apply(.bold, to: $0) } }
-                        Button("𝘐")  { transformSelection { UnicodeTextFormatter.apply(.italic, to: $0) } }
-                        Button("𝒃𝒊") { transformSelection { UnicodeTextFormatter.apply(.boldItalic, to: $0) } }
-                        Button("𝚖")  { transformSelection { UnicodeTextFormatter.apply(.monospace, to: $0) } }
-                        Button("𝒮")  { transformSelection { UnicodeTextFormatter.apply(.script, to: $0) } }
-                        Button("ꜱᴄ") { transformSelection { UnicodeTextFormatter.apply(.smallCaps, to: $0) } }
+                        Button("𝐁")  { transformSelection { UnicodeTextFormatter.apply(.bold, to: $0, mode: vnMode) } }
+                        Button("𝘐")  { transformSelection { UnicodeTextFormatter.apply(.italic, to: $0, mode: vnMode) } }
+                        Button("𝒃𝒊") { transformSelection { UnicodeTextFormatter.apply(.boldItalic, to: $0, mode: vnMode) } }
+                        Button("𝚖")  { transformSelection { UnicodeTextFormatter.apply(.monospace, to: $0, mode: vnMode) } }
+                        Button("𝒮")  { transformSelection { UnicodeTextFormatter.apply(.script, to: $0, mode: vnMode) } }
+                        Button("ꜱᴄ") { transformSelection { UnicodeTextFormatter.apply(.smallCaps, to: $0, mode: vnMode) } }
                         Button("u̲")  { transformSelection { UnicodeTextFormatter.apply(.underline, to: $0) } }
                         Button("s̶")  { transformSelection { UnicodeTextFormatter.apply(.strikethrough, to: $0) } }
                     }
@@ -111,6 +115,18 @@ struct SocialMediaFormatterView: View {
                     Button("Revert") { revertToPlain() }
                         .buttonStyle(ToolbarButtonStyle(backgroundColor: Color.red.opacity(0.15), foregroundColor: .red))
                 }
+
+                // VN toggle — always visible; switches Vietnamese handling strategy
+                Button(action: { vietnameseNatural.toggle() }) {
+                    Text("VN")
+                }
+                .buttonStyle(ToolbarButtonStyle(
+                    backgroundColor: vietnameseNatural ? AppColors.accent : Color.gray.opacity(0.2),
+                    foregroundColor: vietnameseNatural ? .white : .primary
+                ))
+                .help(vietnameseNatural
+                    ? "Vietnamese natural: words with tone marks stay plain, only ASCII gets styled"
+                    : "Vietnamese accent: tone marks are re-attached over styled letters (rendering varies by font)")
 
                 // Copy — always visible
                 Button(action: copyText) {
@@ -293,7 +309,7 @@ struct SocialMediaFormatterView: View {
 
     private func convertMarkdownToUnicode() {
         pushToHistory(text)
-        text = UnicodeTextFormatter.markdownToUnicode(text)
+        text = UnicodeTextFormatter.markdownToUnicode(text, mode: vnMode)
     }
 
     private func convertTableToASCII() {
