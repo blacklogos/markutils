@@ -4,7 +4,7 @@ All notable changes to Clip are documented here.
 
 ---
 
-## Unreleased
+## v1.6.0 — 2026-07-16
 
 ### New features
 
@@ -17,8 +17,23 @@ All notable changes to Clip are documented here.
 - **Comments → instruction export**: drag-select text in the preview to attach a free-text note; manage notes in a side panel (click a row to jump to and flash its highlight, edit inline, delete). Copy the enclosing section or the whole file — source preserved verbatim with each note inlined as a `💬 INSTRUCTION` callout — to paste into an external AI agent. Comments persist in a per-file sidecar under Application Support; the source `.md` is never modified. On reload, comments re-anchor by quoted text + context; a quote that no longer matches is flagged "needs review" (never silently dropped) and appended to the copied output. Deleting a comment (or "Clear all") now asks to confirm first.
 
 **Diff Tab** (⌘6)
-- Compare two markdown texts side by side with a live line-level unified diff (git-style red/green). Pairs with the Reader's "Copy for AI" loop: paste the original on the left, the agent's revised version on the right, and review exactly what changed.
+- Compare two texts side by side: paired rows with per-side line numbers, removal/addition counts in pane headers, per-pane Copy buttons, hatched fillers where one side has no counterpart. Pairs with the Reader's "Copy for AI" loop: paste the original on the left, the agent's revised version on the right, and review exactly what changed.
+- Precision picker for intra-line highlighting: Smart (default, picks per line pair), Line, Word, Char. Smart uses character-level marks for typo-size edits, word-level when lines share enough words, whole-line otherwise.
+- Fast while typing: common prefix/suffix trimmed before the diff, computation debounced off the main thread, and the preview keeps its scroll position across edits.
 - Swap sides and clear both; large inputs guarded.
+
+**Vietnamese-aware Unicode styling** (Social tab + CLI)
+- Accent mode (default): tone marks re-attach over styled letters (𝐦𝐚̆́𝐭 instead of the old half-styled 𝐦ắ𝐭); đ/Đ rendered with a stroke overlay
+- Natural mode ("VN" toggle in the Social tab, `--natural`/`-n` in the CLI): words with tone marks stay plain and only ASCII tokens get styled — safest rendering on every platform
+- Underline/strikethrough no longer decorate spaces or break tone-mark clusters
+- Revert to plain now restores Vietnamese text exactly (NFC recomposition, đ reconstructed)
+
+**CLI parity** (`clip-tool`)
+- `clip style <bold|italic|bold-italic|mono|script|small-caps|underline|strike> [-n] [-c]`
+- `clip unstyle` — strip all Unicode styling back to plain text
+- `clip table --from md|csv|tsv --to md|csv|tsv|ascii`
+- `clip comments list|export <file.md>` — read a file's review comments or the compiled AI instructions straight from the sidecar
+- `export`/`import` fail with clean errors and exit codes instead of crashing on bad paths
 
 **Markdown engine upgrades** (Reader, Transform preview, Notes, CLI)
 - Fenced code blocks (``` and ~~~) with HTML escaping
@@ -32,6 +47,14 @@ All notable changes to Clip are documented here.
 - Transform tab editors now match the warm theme (no more stark white)
 - Fixed crash when launching the app by opening a document (open event arrives before the panel exists)
 - Fixed stale `NoteStore` test referencing removed `todayNote` API
+
+### Hardening (v1.6.0 review sweep)
+- CLI installer's admin AppleScript now escapes the bundle path for both quoting layers (a path containing quotes could previously inject root shell commands)
+- Preview WebViews never navigate in-place: link clicks in untrusted markdown open the default browser instead
+- Vault saves are debounced onto a background queue and flushed on quit (was: full JSON rewrite, image blobs included, on the main thread per mutation)
+- Asset grid uses cached 160px thumbnails (was: full image decode per visible cell per view update)
+- Preview footer "MD Preview by Clip" removed from all previews
+- Diff engine consolidated to one LCS implementation; one-keystroke edit on a 4000-line document computes in ~9 ms (was ~2.8 s in debug builds)
 
 ### Hardening (post-review fixes)
 - Notes checkboxes now toggle by exact source line (`data-line` emitted by the renderer) — task-like

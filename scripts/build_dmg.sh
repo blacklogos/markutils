@@ -3,8 +3,8 @@
 # Configuration
 APP_NAME="Clip"
 BUILD_DIR=".build/release"
-VERSION="1.5.0"
-BUILD_NUMBER="6"
+VERSION="1.6.0"
+BUILD_NUMBER="7"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 APP_BUNDLE="${APP_NAME}.app"
 DMG_STAGING="dmg_staging"

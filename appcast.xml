@@ -9,6 +9,29 @@
     <language>en</language>
 
     <item>
+      <title>Version 1.6.0</title>
+      <pubDate>Wed, 16 Jul 2026 00:00:00 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>What's New in Clip 1.6.0</h2>
+        <ul>
+          <li><strong>Diff Tab (⌘6)</strong> — side-by-side text compare with line numbers, smart word/char highlighting, and per-pane copy</li>
+          <li><strong>Reader Comments → AI Export</strong> — annotate markdown in the preview, export the file with inline instructions for an AI agent</li>
+          <li><strong>Vietnamese Unicode Styling</strong> — accent and natural modes keep Vietnamese text readable when styling for social media</li>
+          <li><strong>CLI Additions</strong> — clip style, unstyle, table, and comments subcommands</li>
+          <li><strong>Faster and Safer</strong> — cached thumbnails, debounced vault saves, hardened previews and installer</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/blacklogos/markutils/releases/download/v1.6.0/Clip-1.6.0.dmg"
+        sparkle:edSignature="vzEVmr1TPbw7OvGJPhTuVe04d2vIoB3Us8CGB0zEv7AxFbx+swQaxsjdvyCGenV9sT3N0r9ieOyCFAKVGF7vDA=="
+        length="6443296"
+        type="application/octet-stream" />
+    </item>
+
+    <item>
       <title>Version 1.5.0</title>
       <pubDate>Sat, 26 Apr 2026 00:00:00 +0000</pubDate>
       <sparkle:version>6</sparkle:version>
