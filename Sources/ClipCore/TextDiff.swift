@@ -30,23 +30,41 @@ public enum TextDiff {
     public static func diff(_ a: String, _ b: String) -> [Line] {
         let aLines = lines(of: a)
         let bLines = lines(of: b)
-        let (aFlags, bFlags) = lcsFlags(aLines, bLines)
+
+        // Trim common prefix/suffix before the O(n·m) table. A typical edit
+        // changes one region, so this collapses the DP work from lines² to the
+        // changed span — the difference between janky and free typing.
+        var start = 0
+        while start < aLines.count && start < bLines.count && aLines[start] == bLines[start] {
+            start += 1
+        }
+        var aEnd = aLines.count, bEnd = bLines.count
+        while aEnd > start && bEnd > start && aLines[aEnd - 1] == bLines[bEnd - 1] {
+            aEnd -= 1; bEnd -= 1
+        }
+
+        let aMid = Array(aLines[start..<aEnd])
+        let bMid = Array(bLines[start..<bEnd])
+        let (aFlags, bFlags) = lcsFlags(aMid, bMid)
+
+        var result: [Line] = aLines[..<start].map { Line(kind: .equal, text: $0) }
 
         // Replay the flag walk: unflagged pairs are equal, flagged entries emit
         // removed/added in the same order the LCS walk decided them.
-        var result: [Line] = []
         var i = 0, j = 0
-        while i < aLines.count && j < bLines.count {
+        while i < aMid.count && j < bMid.count {
             if !aFlags[i] && !bFlags[j] {
-                result.append(Line(kind: .equal, text: aLines[i])); i += 1; j += 1
+                result.append(Line(kind: .equal, text: aMid[i])); i += 1; j += 1
             } else if aFlags[i] {
-                result.append(Line(kind: .removed, text: aLines[i])); i += 1
+                result.append(Line(kind: .removed, text: aMid[i])); i += 1
             } else {
-                result.append(Line(kind: .added, text: bLines[j])); j += 1
+                result.append(Line(kind: .added, text: bMid[j])); j += 1
             }
         }
-        while i < aLines.count { result.append(Line(kind: .removed, text: aLines[i])); i += 1 }
-        while j < bLines.count { result.append(Line(kind: .added, text: bLines[j])); j += 1 }
+        while i < aMid.count { result.append(Line(kind: .removed, text: aMid[i])); i += 1 }
+        while j < bMid.count { result.append(Line(kind: .added, text: bMid[j])); j += 1 }
+
+        result += aLines[aEnd...].map { Line(kind: .equal, text: $0) }
         return result
     }
 

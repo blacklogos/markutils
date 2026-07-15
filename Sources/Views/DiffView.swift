@@ -9,14 +9,16 @@ struct DiffView: View {
     @State private var revised = ""
     @State private var precision: TextDiff.Precision = .smart
 
-    // Bound the LCS table — it is O(lines² ); pathological inputs would hang the
-    // main thread. Realistic markdown stays well under this.
-    private let maxLines = 4000
+    // Diff + HTML are computed off-main with a short debounce (never in body):
+    // the LCS is O(changed-region²) and HTML assembly is linear in output size.
+    @State private var previewHTML = DiffView.computeHTML("", "", .smart)
+    @State private var diffTask: Task<Void, Never>?
+
+    // Bound the LCS table; pathological inputs would still burn CPU off-main.
+    // Realistic markdown stays well under this.
+    private nonisolated static let maxLines = 4000
 
     var body: some View {
-        let over = TextDiff.lineCount(original) > maxLines || TextDiff.lineCount(revised) > maxLines
-        let lines = over ? [] : TextDiff.annotatedDiff(original, revised, precision: precision)
-
         VStack(spacing: 0) {
             header()
             VSplitView {
@@ -28,13 +30,43 @@ struct DiffView: View {
                 }
                 .frame(minHeight: 120)
 
-                HTMLPreviewView(htmlContent: over
-                    ? tooLargeHTML
-                    : DiffHTMLRenderer.html(for: lines, original: original, revised: revised))
+                HTMLPreviewView(htmlContent: previewHTML)
                     .frame(minHeight: 120)
             }
         }
         .background(AppColors.windowBackground)
+        .onChange(of: original) { scheduleDiff() }
+        .onChange(of: revised) { scheduleDiff() }
+        .onChange(of: precision) { scheduleDiff() }
+    }
+
+    // MARK: - Diff computation (debounced, off-main)
+
+    private func scheduleDiff() {
+        diffTask?.cancel()
+        let o = original, r = revised, p = precision
+        diffTask = Task {
+            // Debounce: coalesce keystrokes; cancellation aborts stale runs.
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            let html = await Task.detached(priority: .userInitiated) {
+                DiffView.computeHTML(o, r, p)
+            }.value
+            guard !Task.isCancelled else { return }
+            previewHTML = html
+        }
+    }
+
+    // nonisolated: runs inside Task.detached, off the main actor by design.
+    private nonisolated static func computeHTML(_ original: String, _ revised: String,
+                                                _ precision: TextDiff.Precision) -> String {
+        guard TextDiff.lineCount(original) <= maxLines,
+              TextDiff.lineCount(revised) <= maxLines else {
+            return "<div class=\"diff-empty\">Too large to diff line-by-line "
+                + "(over \(maxLines) lines per side).</div>"
+        }
+        let lines = TextDiff.annotatedDiff(original, revised, precision: precision)
+        return DiffHTMLRenderer.html(for: lines, original: original, revised: revised)
     }
 
     // MARK: - Header
@@ -119,13 +151,5 @@ struct DiffView: View {
             }
             .background(AppColors.editorBackground)
         }
-    }
-
-    // MARK: - Helpers
-
-    // Body fragment — HTMLPreviewView wraps it in the page envelope.
-    private var tooLargeHTML: String {
-        "<div class=\"diff-empty\">Too large to diff line-by-line "
-            + "(over \(maxLines) lines per side).</div>"
     }
 }
