@@ -409,13 +409,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
+    // Escaping for the outer AppleScript double-quoted string literal. Without
+    // this, a bundle path containing " or \ terminates the literal early and the
+    // remainder runs as root (POSIX quoting alone only covers the shell layer).
+    private func appleScriptQuoted(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
     private func installCLI(from sourcePath: String) {
         let dest = "/usr/local/bin/clip"
         let qSrc = shellQuotedPath(sourcePath)
         let qDst = shellQuotedPath(dest)
         let script = "mkdir -p /usr/local/bin && cp \(qSrc) \(qDst) && chmod +x \(qDst) && xattr -rd com.apple.quarantine \(qDst)"
 
-        let appleScript = NSAppleScript(source: "do shell script \"\(script)\" with administrator privileges")
+        let appleScript = NSAppleScript(source: "do shell script \"\(appleScriptQuoted(script))\" with administrator privileges")
         var error: NSDictionary?
         appleScript?.executeAndReturnError(&error)
 
