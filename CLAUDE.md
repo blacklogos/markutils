@@ -23,12 +23,13 @@ There is no linter or formatter configured. No third-party dependencies.
 
 **Data layer:** `AssetStore` is a singleton `@Observable` class that persists `[Asset]` as JSON to `~/Library/Application Support/Clip/assets.json`. Assets can be text, image, or folder (recursive tree via `children`). No SwiftData despite what docs say — it's plain Codable + JSON file I/O.
 
-**Tabs in ContentView** (index-based `selectedTab`, ⌘1–⌘5 shortcuts):
+**Tabs in ContentView** (index-based `selectedTab`, ⌘1–⌘6 shortcuts):
 - 0: `AssetGridView` — drag-and-drop vault for images/text with folder organization
 - 1: `MarkdownReaderView` — view .md files/folders (sidebar tree, live reload, Finder "Open With" via `application(_:open:)`); state in `MarkdownDocumentStore`
 - 2: `QuickActionsView` — auto-detecting transform: markdown ↔ HTML (WebKit live preview), tables ↔ CSV/TSV
-- 3: `SocialMediaFormatterView` — Unicode text styling for social media
+- 3: `SocialMediaFormatterView` — Unicode text styling for social media (Vietnamese accent/natural modes)
 - 4: `NotesView` — daily notes (also reachable via ⌥A floating panel)
+- 5: `DiffView` — paste two texts, side-by-side diff with precision picker (smart/line/word/char); engine in ClipCore `TextDiff*`
 
 **Transformer pipeline:** `RichTextTransformer` handles markdown ↔ HTML and markdown ↔ NSAttributedString conversions. `TableTransformer` handles TSV/CSV ↔ markdown table. The preview pane uses `HTMLPreviewView` (WKWebView) rendering HTML output from `RichTextTransformer.markdownToHTML()`.
 

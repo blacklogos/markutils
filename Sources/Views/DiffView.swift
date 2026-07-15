@@ -7,6 +7,7 @@ import ClipCore
 struct DiffView: View {
     @State private var original = ""
     @State private var revised = ""
+    @State private var precision: TextDiff.Precision = .smart
 
     // Bound the LCS table — it is O(lines² ); pathological inputs would hang the
     // main thread. Realistic markdown stays well under this.
@@ -14,10 +15,10 @@ struct DiffView: View {
 
     var body: some View {
         let over = lineCount(original) > maxLines || lineCount(revised) > maxLines
-        let lines = over ? [] : TextDiff.diff(original, revised)
+        let lines = over ? [] : TextDiff.annotatedDiff(original, revised, precision: precision)
 
         VStack(spacing: 0) {
-            header(lines: lines, tooLarge: over)
+            header()
             VSplitView {
                 HSplitView {
                     editorPane(title: "Original", text: $original,
@@ -27,7 +28,9 @@ struct DiffView: View {
                 }
                 .frame(minHeight: 120)
 
-                HTMLPreviewView(htmlContent: over ? tooLargeHTML : DiffHTMLRenderer.html(for: lines))
+                HTMLPreviewView(htmlContent: over
+                    ? tooLargeHTML
+                    : DiffHTMLRenderer.html(for: lines, original: original, revised: revised))
                     .frame(minHeight: 120)
             }
         }
@@ -36,7 +39,7 @@ struct DiffView: View {
 
     // MARK: - Header
 
-    private func header(lines: [TextDiff.Line], tooLarge: Bool) -> some View {
+    private func header() -> some View {
         HStack(spacing: 8) {
             Image(systemName: "plusminus")
                 .font(.system(size: 11))
@@ -45,18 +48,20 @@ struct DiffView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
 
-            if !tooLarge {
-                let added = lines.filter { $0.kind == .added }.count
-                let removed = lines.filter { $0.kind == .removed }.count
-                if added > 0 || removed > 0 {
-                    Text("+\(added)")
-                        .font(.system(size: 10, weight: .semibold)).foregroundStyle(.green)
-                    Text("−\(removed)")
-                        .font(.system(size: 10, weight: .semibold)).foregroundStyle(.red)
-                }
-            }
-
+            // Removal/addition counts live in the preview's pane headers now.
             Spacer()
+
+            // Diff precision: how finely changed line pairs are highlighted
+            Picker("", selection: $precision) {
+                Text("Smart").tag(TextDiff.Precision.smart)
+                Text("Line").tag(TextDiff.Precision.line)
+                Text("Word").tag(TextDiff.Precision.word)
+                Text("Char").tag(TextDiff.Precision.character)
+            }
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .frame(width: 90)
+            .help("Highlight precision inside changed lines")
 
             headerButton(icon: "arrow.left.arrow.right", tooltip: "Swap sides") {
                 swap(&original, &revised)
@@ -122,9 +127,9 @@ struct DiffView: View {
         s.isEmpty ? 0 : s.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
     }
 
+    // Body fragment — HTMLPreviewView wraps it in the page envelope.
     private var tooLargeHTML: String {
-        MarkdownPreviewStyle.page(
-            body: "<div class=\"diff-empty\">Too large to diff line-by-line "
-                + "(over \(maxLines) lines per side).</div>")
+        "<div class=\"diff-empty\">Too large to diff line-by-line "
+            + "(over \(maxLines) lines per side).</div>"
     }
 }

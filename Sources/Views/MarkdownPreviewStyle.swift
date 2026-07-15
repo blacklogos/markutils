@@ -91,26 +91,35 @@ enum MarkdownPreviewStyle {
         th     { background: var(--th-bg); font-weight: 600;
                  font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         tbody tr:nth-child(even) td { background: var(--even-bg); }
-        .clip-footer {
-            margin-top: 2em;
-            padding-top: 0.8em;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 0.75em;
-            color: var(--fg2);
-            letter-spacing: 0.02em;
-        }
-        /* Unified line diff (Diff tab). Monospace, git-style red/green gutters. */
-        .diff { font-family: "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.55; }
-        .diff-line { display: flex; white-space: pre-wrap; word-break: break-word; padding: 0 6px; }
-        .diff-line .gutter { flex: 0 0 1.4em; color: var(--fg2); user-select: none; text-align: center; }
-        .diff-line .text { flex: 1; }
-        .diff-line.added   { background: rgba(70,160,90,0.16); }
-        .diff-line.added .gutter   { color: #3f9d54; }
-        .diff-line.removed { background: rgba(200,70,70,0.15); }
-        .diff-line.removed .gutter { color: #c64646; }
-        .diff-line.equal   { color: var(--fg2); }
+        /* Side-by-side diff (Diff tab). Two panes, line numbers, hatched fillers. */
+        .split-header { display: flex; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                        font-size: 12px; position: sticky; top: 0; background: var(--bg); z-index: 1;
+                        border-bottom: 1px solid var(--border); }
+        .split-header .pane { flex: 1 1 50%; min-width: 0; display: flex; align-items: center;
+                              gap: 8px; padding: 6px 10px; }
+        .split-header .pane + .pane { border-left: 1px solid var(--border); }
+        .split-header .count { font-weight: 600; }
+        .split-header .count.rem { color: #c64646; }
+        .split-header .count.add { color: #2f9e63; }
+        .split-header .meta { margin-left: auto; color: var(--fg2); }
+        .split-header .copy-btn { font: inherit; font-weight: 600; color: var(--fg);
+                                  background: none; border: none; cursor: pointer; padding: 0 2px; }
+        .split-header .copy-btn:hover { color: #4a90d9; }
+        .split { font-family: "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.55; }
+        .split-row { display: flex; align-items: stretch; }
+        .split-row .cell { flex: 1 1 50%; min-width: 0; display: flex;
+                           white-space: pre-wrap; word-break: break-word; }
+        .split-row .cell.right { border-left: 1px solid var(--border); }
+        .cell .lineno { flex: 0 0 2.6em; text-align: right; padding-right: 8px;
+                        color: var(--fg2); user-select: none; }
+        .cell .text { flex: 1; padding-right: 6px; }
+        .cell.removed { background: rgba(200,70,70,0.13); }
+        .cell.added   { background: rgba(70,160,90,0.14); }
+        .cell.filler  { background: repeating-linear-gradient(-45deg, transparent, transparent 4px,
+                        rgba(127,127,127,0.10) 4px, rgba(127,127,127,0.10) 8px); }
+        /* Intra-line changed segments (word/char/smart precision) */
+        .cell.removed .seg { background: rgba(200,70,70,0.35); border-radius: 2px; }
+        .cell.added .seg   { background: rgba(70,160,90,0.40); border-radius: 2px; }
         .diff-empty { color: var(--fg2); font-family: -apple-system, sans-serif;
                       font-size: 12px; padding: 14px 6px; }
         """

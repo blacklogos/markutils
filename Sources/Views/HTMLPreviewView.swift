@@ -5,7 +5,7 @@ struct HTMLPreviewView: NSViewRepresentable {
     let htmlContent: String
 
     private var fullHTML: String {
-        MarkdownPreviewStyle.page(body: htmlContent + "<div class=\"clip-footer\">MD Preview by Clip</div>")
+        MarkdownPreviewStyle.page(body: htmlContent)
     }
 
     func makeNSView(context: Context) -> WKWebView {
