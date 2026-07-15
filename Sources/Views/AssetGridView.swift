@@ -520,7 +520,7 @@ struct AssetItemView: View {
             ZStack(alignment: .topTrailing) {
                 // Thumbnail
                 Group {
-                    if asset.type == .image, let data = asset.imageData, let nsImage = NSImage(data: data) {
+                    if asset.type == .image, let nsImage = AssetThumbnailCache.shared.thumbnail(for: asset) {
                         Image(nsImage: nsImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -681,6 +681,7 @@ struct AssetItemView: View {
     }
 
     private func deleteAsset() {
+        AssetThumbnailCache.shared.removeThumbnail(for: asset.id)
         store.delete(asset)
     }
 }
@@ -720,7 +721,7 @@ struct CompactAssetRowView: View {
         HStack {
             // Icon/Thumbnail
             ZStack(alignment: .bottomTrailing) {
-                if asset.type == .image, let data = asset.imageData, let nsImage = NSImage(data: data) {
+                if asset.type == .image, let nsImage = AssetThumbnailCache.shared.thumbnail(for: asset) {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -832,6 +833,7 @@ struct CompactAssetRowView: View {
     }
 
     private func deleteAsset() {
+        AssetThumbnailCache.shared.removeThumbnail(for: asset.id)
         withAnimation {
             store.delete(asset)
         }
