@@ -17,6 +17,10 @@ func printUsage() {
       md2html    Markdown → HTML  (stdin → stdout)
       html2md    HTML → Markdown  (stdin → stdout)
       md2social  Markdown → Unicode-styled social text  (stdin → stdout)
+      style      Apply one Unicode style to plain text  (stdin → stdout)
+      unstyle    Strip Unicode styling back to plain text  (stdin → stdout)
+      table      Convert tables between md, csv, tsv, ascii  (stdin → stdout)
+      comments   List or export reader comments for a .md file
       export     Export asset vault as JSON  (stdout or --file)
       import     Import asset vault from JSON  (stdin or --file)
       search     Search asset vault by name/content
@@ -24,13 +28,18 @@ func printUsage() {
 
     OPTIONS:
       -c, --clipboard  Read from clipboard; write result back to clipboard
-      -n, --natural    md2social: keep Vietnamese words plain, style ASCII only
+      -n, --natural    md2social/style: keep Vietnamese words plain, style ASCII only
       -f, --file PATH  Read/write to file instead of stdin/stdout (export/import)
       -h, --help       Show this help message
 
     EXAMPLES:
       echo "# Hello **world**" | clip md2html
       pbpaste | clip md2social | pbcopy
+
+      echo "launch day" | clip style bold
+      pbpaste | clip unstyle | pbcopy
+      clip table --from md --to csv < report.md
+      clip comments export ~/Documents/post.md
 
       clip export > ~/backup.json
       clip import < ~/backup.json
@@ -59,6 +68,40 @@ func printSubcommandHelp(_ sub: String) {
         Vietnamese handling:
           default        accent mode: tone marks re-attached over styled letters
           -n, --natural  natural mode: words with tone marks stay plain, ASCII styled
+
+        """, stderr)
+    case "style":
+        fputs("""
+        clip style: apply one Unicode style to plain text (stdin to stdout).
+
+        USAGE: clip style <name> [-n|--natural] [-c|--clipboard]
+
+        STYLES: bold, italic, bold-italic, mono, script, small-caps, underline, strike
+
+        Vietnamese handling:
+          default        accent mode: tone marks re-attached over styled letters
+          -n, --natural  natural mode: words with tone marks stay plain, ASCII styled
+
+        """, stderr)
+    case "unstyle":
+        fputs("clip unstyle: strip Unicode styling back to plain text (stdin to stdout).\n", stderr)
+    case "table":
+        fputs("""
+        clip table: convert a table between formats (stdin to stdout).
+
+        USAGE: clip table --from <md|csv|tsv> --to <md|csv|tsv|ascii> [-c|--clipboard]
+
+        --to ascii renders a box-drawing table (csv/tsv input is converted via markdown first).
+
+        """, stderr)
+    case "comments":
+        fputs("""
+        clip comments: reader comments stored by Clip for a markdown file.
+
+        USAGE: clip comments <list|export> <file.md>
+
+          list    Print the raw comment sidecar JSON
+          export  Print the AI instruction block (source text + inline callouts)
 
         """, stderr)
     default:
@@ -204,6 +247,18 @@ case "md2html", "html2md", "md2social":
         print(output, terminator: "")
     }
 
+case "style":
+    runStyle(Array(args.dropFirst(2)))
+
+case "unstyle":
+    runUnstyle(Array(args.dropFirst(2)))
+
+case "table":
+    runTable(Array(args.dropFirst(2)))
+
+case "comments":
+    runComments(Array(args.dropFirst(2)))
+
 case "export":
     let remainingArgs = Array(args.dropFirst(2))
     let vaultURL = vaultFileURL()
@@ -213,17 +268,34 @@ case "export":
         exit(1)
     }
 
-    let data = try! Data(contentsOf: vaultURL)
+    let data: Data
+    do {
+        data = try Data(contentsOf: vaultURL)
+    } catch {
+        fputs("clip: cannot read vault: \(error.localizedDescription)\n", stderr)
+        exit(2)
+    }
 
     // Pretty-print: decode then re-encode with formatting
     if let assets = try? JSONDecoder().decode([VaultAsset].self, from: data) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let pretty = try! encoder.encode(assets)
-        let jsonString = String(data: pretty, encoding: .utf8)!
+        let jsonString: String
+        do {
+            let pretty = try encoder.encode(assets)
+            jsonString = String(data: pretty, encoding: .utf8)!
+        } catch {
+            fputs("clip: cannot encode vault JSON: \(error.localizedDescription)\n", stderr)
+            exit(2)
+        }
 
         if let filePath = fileArgument(remainingArgs) {
-            try! jsonString.write(toFile: filePath, atomically: true, encoding: .utf8)
+            do {
+                try jsonString.write(toFile: filePath, atomically: true, encoding: .utf8)
+            } catch {
+                fputs("clip: cannot write to \(filePath): \(error.localizedDescription)\n", stderr)
+                exit(2)
+            }
             fputs("Exported \(assets.count) assets to \(filePath)\n", stderr)
         } else {
             print(jsonString, terminator: "")
@@ -231,7 +303,12 @@ case "export":
     } else {
         // Fallback: output raw data
         if let filePath = fileArgument(remainingArgs) {
-            try! data.write(to: URL(fileURLWithPath: filePath))
+            do {
+                try data.write(to: URL(fileURLWithPath: filePath))
+            } catch {
+                fputs("clip: cannot write to \(filePath): \(error.localizedDescription)\n", stderr)
+                exit(2)
+            }
             fputs("Exported vault to \(filePath)\n", stderr)
         } else {
             FileHandle.standardOutput.write(data)
@@ -247,7 +324,12 @@ case "import":
             fputs("clip: file not found: \(filePath)\n", stderr)
             exit(2)
         }
-        inputData = try! Data(contentsOf: URL(fileURLWithPath: filePath))
+        do {
+            inputData = try Data(contentsOf: URL(fileURLWithPath: filePath))
+        } catch {
+            fputs("clip: cannot read \(filePath): \(error.localizedDescription)\n", stderr)
+            exit(2)
+        }
     } else {
         inputData = FileHandle.standardInput.readDataToEndOfFile()
     }
@@ -260,8 +342,13 @@ case "import":
 
     let vaultURL = vaultFileURL()
     let vaultDir = vaultURL.deletingLastPathComponent()
-    try! FileManager.default.createDirectory(at: vaultDir, withIntermediateDirectories: true)
-    try! inputData.write(to: vaultURL)
+    do {
+        try FileManager.default.createDirectory(at: vaultDir, withIntermediateDirectories: true)
+        try inputData.write(to: vaultURL)
+    } catch {
+        fputs("clip: cannot write vault: \(error.localizedDescription)\n", stderr)
+        exit(2)
+    }
     fputs("Vault imported successfully.\n", stderr)
 
 case "search":
