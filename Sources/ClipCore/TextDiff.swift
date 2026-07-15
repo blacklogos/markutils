@@ -30,39 +30,62 @@ public enum TextDiff {
     public static func diff(_ a: String, _ b: String) -> [Line] {
         let aLines = lines(of: a)
         let bLines = lines(of: b)
-        let n = aLines.count, m = bLines.count
+        let (aFlags, bFlags) = lcsFlags(aLines, bLines)
 
-        // dp[i][j] = length of the LCS of aLines[i...] and bLines[j...].
-        var dp = Array(repeating: Array(repeating: 0, count: m + 1), count: n + 1)
-        if n > 0 && m > 0 {
-            for i in stride(from: n - 1, through: 0, by: -1) {
-                for j in stride(from: m - 1, through: 0, by: -1) {
-                    dp[i][j] = aLines[i] == bLines[j]
-                        ? dp[i + 1][j + 1] + 1
-                        : max(dp[i + 1][j], dp[i][j + 1])
-                }
-            }
-        }
-
+        // Replay the flag walk: unflagged pairs are equal, flagged entries emit
+        // removed/added in the same order the LCS walk decided them.
         var result: [Line] = []
         var i = 0, j = 0
-        while i < n && j < m {
-            if aLines[i] == bLines[j] {
+        while i < aLines.count && j < bLines.count {
+            if !aFlags[i] && !bFlags[j] {
                 result.append(Line(kind: .equal, text: aLines[i])); i += 1; j += 1
-            } else if dp[i + 1][j] >= dp[i][j + 1] {
+            } else if aFlags[i] {
                 result.append(Line(kind: .removed, text: aLines[i])); i += 1
             } else {
                 result.append(Line(kind: .added, text: bLines[j])); j += 1
             }
         }
-        while i < n { result.append(Line(kind: .removed, text: aLines[i])); i += 1 }
-        while j < m { result.append(Line(kind: .added, text: bLines[j])); j += 1 }
+        while i < aLines.count { result.append(Line(kind: .removed, text: aLines[i])); i += 1 }
+        while j < bLines.count { result.append(Line(kind: .added, text: bLines[j])); j += 1 }
         return result
     }
 
-    /// True when the two texts have no line-level differences.
-    public static func isIdentical(_ a: String, _ b: String) -> Bool {
-        diff(a, b).allSatisfy { $0.kind == .equal }
+    /// Number of lines `diff` operates on ("" → 0; else newline count + 1).
+    /// Matches `lines(of:)` semantics without allocating the line array.
+    public static func lineCount(_ text: String) -> Int {
+        text.isEmpty ? 0 : text.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+    }
+
+    // MARK: - Shared LCS engine
+
+    /// The single LCS implementation for the whole diff engine (lines and
+    /// intra-line tokens). Flat DP buffer; marks elements outside the common
+    /// subsequence as true. Tie-break prefers advancing the left side, which
+    /// makes removals precede additions in replace blocks (git-style).
+    static func lcsFlags<T: Equatable>(_ a: [T], _ b: [T]) -> ([Bool], [Bool]) {
+        let n = a.count, m = b.count
+        let width = m + 1
+        var dp = [Int](repeating: 0, count: (n + 1) * width)
+        if n > 0 && m > 0 {
+            for i in (0..<n).reversed() {
+                for j in (0..<m).reversed() {
+                    dp[i * width + j] = a[i] == b[j]
+                        ? dp[(i + 1) * width + j + 1] + 1
+                        : max(dp[(i + 1) * width + j], dp[i * width + j + 1])
+                }
+            }
+        }
+        var aFlags = [Bool](repeating: false, count: n)
+        var bFlags = [Bool](repeating: false, count: m)
+        var i = 0, j = 0
+        while i < n && j < m {
+            if a[i] == b[j] { i += 1; j += 1 }
+            else if dp[(i + 1) * width + j] >= dp[i * width + j + 1] { aFlags[i] = true; i += 1 }
+            else { bFlags[j] = true; j += 1 }
+        }
+        while i < n { aFlags[i] = true; i += 1 }
+        while j < m { bFlags[j] = true; j += 1 }
+        return (aFlags, bFlags)
     }
 
     // Empty input → zero lines (so "" vs "x" is a clean single addition, not a

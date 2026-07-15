@@ -12,7 +12,7 @@ import Foundation
 //                word when they share enough words, whole line otherwise
 public extension TextDiff {
 
-    enum Precision: String, CaseIterable {
+    enum Precision {
         case smart, line, word, character
     }
 
@@ -85,41 +85,44 @@ public extension TextDiff {
     // LCS table bound per line pair; beyond this fall back to whole-line highlight.
     private static let maxTokensPerLine = 600
 
+    /// One LCS pass per tier: tokenize, flag changes via the shared engine, and
+    /// derive both the segments and the similarity from the same flags.
     private static func intralineSegments(_ removed: String, _ added: String, precision: Precision)
         -> ([Segment]?, [Segment]?) {
-        let mode = precision == .smart ? smartMode(removed, added) : precision
-        guard mode == .word || mode == .character else { return (nil, nil) }
+        func attempt(_ mode: Precision) -> (tokens: ([String], [String]), flags: ([Bool], [Bool]))? {
+            let r = tokenize(removed, by: mode)
+            let a = tokenize(added, by: mode)
+            guard r.count <= maxTokensPerLine, a.count <= maxTokensPerLine,
+                  !r.isEmpty, !a.isEmpty else { return nil }
+            return ((r, a), lcsFlags(r, a))
+        }
+        func segments(_ t: ([String], [String]), _ f: ([Bool], [Bool])) -> ([Segment]?, [Segment]?) {
+            (mergeSegments(t.0, f.0), mergeSegments(t.1, f.1))
+        }
 
-        let rTokens = tokenize(removed, by: mode)
-        let aTokens = tokenize(added, by: mode)
-        guard rTokens.count <= maxTokensPerLine, aTokens.count <= maxTokensPerLine,
-              !rTokens.isEmpty, !aTokens.isEmpty else { return (nil, nil) }
-
-        let (rChanged, aChanged) = changedFlags(rTokens, aTokens)
-        return (mergeSegments(rTokens, rChanged), mergeSegments(aTokens, aChanged))
-    }
-
-    /// Smart heuristic: character precision for near-identical short lines (typo-level
-    /// edits), word precision when the lines share enough words, whole line otherwise.
-    private static func smartMode(_ removed: String, _ added: String) -> Precision {
-        // Character tier: char-level similarity ≥ 0.9 on short lines → typo-level edit.
-        if max(removed.count, added.count) <= 200 {
-            let rChars = tokenize(removed, by: .character)
-            let aChars = tokenize(added, by: .character)
-            let denom = max(rChars.count, aChars.count)
-            if denom > 0, Double(lcsLength(rChars, aChars)) / Double(denom) >= 0.9 {
-                return .character
+        switch precision {
+        case .line:
+            return (nil, nil)
+        case .word, .character:
+            guard let (tokens, flags) = attempt(precision) else { return (nil, nil) }
+            return segments(tokens, flags)
+        case .smart:
+            // Character tier: near-identical short lines (typo-level edits).
+            if max(removed.count, added.count) <= 200, let (tokens, flags) = attempt(.character) {
+                let unchanged = flags.0.lazy.filter { !$0 }.count
+                if Double(unchanged) / Double(max(tokens.0.count, tokens.1.count)) >= 0.9 {
+                    return segments(tokens, flags)
+                }
             }
+            // Word tier: similarity over word tokens only (whitespace inflates it).
+            guard let (tokens, flags) = attempt(.word) else { return (nil, nil) }
+            let rWords = zip(tokens.0, flags.0).filter { !$0.0.allSatisfy(\.isWhitespace) }
+            let aWords = zip(tokens.1, flags.1).filter { !$0.0.allSatisfy(\.isWhitespace) }
+            let common = rWords.lazy.filter { !$0.1 }.count
+            let denom = max(rWords.count, aWords.count)
+            guard denom > 0, Double(common) / Double(denom) >= 0.3 else { return (nil, nil) }
+            return segments(tokens, flags)
         }
-        // Word tier: similarity over words only (whitespace tokens would inflate it).
-        let rWords = tokenize(removed, by: .word).filter { !$0.allSatisfy(\.isWhitespace) }
-        let aWords = tokenize(added, by: .word).filter { !$0.allSatisfy(\.isWhitespace) }
-        let denom = max(rWords.count, aWords.count)
-        guard denom > 0, rWords.count <= maxTokensPerLine, aWords.count <= maxTokensPerLine else {
-            return .line
-        }
-        if Double(lcsLength(rWords, aWords)) / Double(denom) >= 0.3 { return .word }
-        return .line
     }
 
     /// Word mode: maximal runs of alphanumerics, runs of whitespace, or a single
@@ -148,42 +151,6 @@ public extension TextDiff {
         }
         if !current.isEmpty { tokens.append(current) }
         return tokens
-    }
-
-    /// LCS over token arrays; marks tokens outside the common subsequence as changed.
-    private static func changedFlags(_ a: [String], _ b: [String]) -> ([Bool], [Bool]) {
-        let n = a.count, m = b.count
-        var dp = Array(repeating: Array(repeating: 0, count: m + 1), count: n + 1)
-        for i in stride(from: n - 1, through: 0, by: -1) {
-            for j in stride(from: m - 1, through: 0, by: -1) {
-                dp[i][j] = a[i] == b[j] ? dp[i + 1][j + 1] + 1 : max(dp[i + 1][j], dp[i][j + 1])
-            }
-        }
-        var aFlags = Array(repeating: false, count: n)
-        var bFlags = Array(repeating: false, count: m)
-        var i = 0, j = 0
-        while i < n && j < m {
-            if a[i] == b[j] { i += 1; j += 1 }
-            else if dp[i + 1][j] >= dp[i][j + 1] { aFlags[i] = true; i += 1 }
-            else { bFlags[j] = true; j += 1 }
-        }
-        while i < n { aFlags[i] = true; i += 1 }
-        while j < m { bFlags[j] = true; j += 1 }
-        return (aFlags, bFlags)
-    }
-
-    private static func lcsLength(_ a: [String], _ b: [String]) -> Int {
-        let n = a.count, m = b.count
-        guard n > 0 && m > 0 else { return 0 }
-        var prev = Array(repeating: 0, count: m + 1)
-        var curr = prev
-        for i in stride(from: n - 1, through: 0, by: -1) {
-            for j in stride(from: m - 1, through: 0, by: -1) {
-                curr[j] = a[i] == b[j] ? prev[j + 1] + 1 : max(prev[j], curr[j + 1])
-            }
-            prev = curr
-        }
-        return prev[0]
     }
 
     /// Coalesces consecutive tokens with the same changed flag into segments.

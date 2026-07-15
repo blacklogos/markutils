@@ -148,6 +148,7 @@ public struct UnicodeTextFormatter {
     /// Applies a Unicode style to all alphanumeric characters in `text`.
     /// `mode` controls handling of Vietnamese/accented letters (see VietnameseMode).
     public static func apply(_ style: Style, to text: String, mode: VietnameseMode = .accent) -> String {
+        let map: [Character: Character]
         switch style {
         case .underline:
             // Combining underline (U+0332) after each letter/digit grapheme
@@ -155,24 +156,16 @@ public struct UnicodeTextFormatter {
         case .strikethrough:
             // Combining strikethrough (U+0336) after each letter/digit grapheme
             return addCombiningMark("\u{0336}", to: text)
-        default:
-            let map = styleMap(for: style)
-            switch mode {
-            case .accent:  return applyAccent(map: map, to: text)
-            case .natural: return applyNatural(map: map, to: text)
-            }
+        case .bold:        map = boldMap
+        case .italic:      map = italicMap
+        case .boldItalic:  map = boldItalicMap
+        case .monospace:   map = monospaceMap
+        case .script:      map = scriptMap
+        case .smallCaps:   map = smallCapsMap
         }
-    }
-
-    static func styleMap(for style: Style) -> [Character: Character] {
-        switch style {
-        case .bold:          return boldMap
-        case .italic:        return italicMap
-        case .boldItalic:    return boldItalicMap
-        case .monospace:     return monospaceMap
-        case .script:        return scriptMap
-        case .smallCaps:     return smallCapsMap
-        case .underline, .strikethrough: return [:]  // handled via combining marks
+        switch mode {
+        case .accent:  return applyAccent(map: map, to: text)
+        case .natural: return applyNatural(map: map, to: text)
         }
     }
 

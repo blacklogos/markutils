@@ -14,7 +14,7 @@ struct DiffView: View {
     private let maxLines = 4000
 
     var body: some View {
-        let over = lineCount(original) > maxLines || lineCount(revised) > maxLines
+        let over = TextDiff.lineCount(original) > maxLines || TextDiff.lineCount(revised) > maxLines
         let lines = over ? [] : TextDiff.annotatedDiff(original, revised, precision: precision)
 
         VStack(spacing: 0) {
@@ -122,10 +122,6 @@ struct DiffView: View {
     }
 
     // MARK: - Helpers
-
-    private func lineCount(_ s: String) -> Int {
-        s.isEmpty ? 0 : s.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
-    }
 
     // Body fragment — HTMLPreviewView wraps it in the page envelope.
     private var tooLargeHTML: String {

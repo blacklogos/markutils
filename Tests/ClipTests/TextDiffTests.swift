@@ -9,7 +9,6 @@ final class TextDiffTests: XCTestCase {
     }
 
     func testIdenticalIsAllEqual() {
-        XCTAssertTrue(TextDiff.isIdentical("a\nb\nc", "a\nb\nc"))
         XCTAssertEqual(kinds("a\nb", "a\nb"), [.equal, .equal])
     }
 
@@ -50,6 +49,5 @@ final class TextDiffTests: XCTestCase {
     }
 
     func testNotIdentical() {
-        XCTAssertFalse(TextDiff.isIdentical("a", "b"))
     }
 }

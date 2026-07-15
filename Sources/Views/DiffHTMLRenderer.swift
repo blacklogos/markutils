@@ -17,8 +17,11 @@ enum DiffHTMLRenderer {
         let additions = lines.filter { $0.kind == .added }.count
         let rows = TextDiff.sideBySideRows(lines).map(rowHTML(for:)).joined(separator: "\n")
 
+        // Per-side line totals derived from the diff itself: equal+removed lines
+        // are exactly the original's lines; equal+added the revised's.
         var body = header(removals: removals, additions: additions,
-                          originalLines: lineCount(original), revisedLines: lineCount(revised))
+                          originalLines: lines.count - additions,
+                          revisedLines: lines.count - removals)
         if removals == 0 && additions == 0 {
             body = "<div class=\"diff-empty\">No differences — the two texts are identical.</div>" + body
         }
@@ -78,30 +81,22 @@ enum DiffHTMLRenderer {
 
     // MARK: - Copy support
 
-    /// Embeds the two pane texts as JSON and copies via clipboard API with an
-    /// execCommand fallback (WKWebView clipboard permissions vary by OS version).
+    /// Embeds the two pane texts as JSON. Copies via textarea + execCommand — the
+    /// one path that works reliably in a loadHTMLString(baseURL: nil) WKWebView.
     private static func copyScript(original: String, revised: String) -> String {
         """
         <script>
         const paneTexts = [\(jsString(original)), \(jsString(revised))];
         function copyPane(i, btn) {
-          const t = paneTexts[i];
-          const done = () => {
-            const old = btn.textContent;
-            btn.textContent = "Copied";
-            setTimeout(() => { btn.textContent = old; }, 1200);
-          };
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(t).then(done).catch(() => { fallbackCopy(t); done(); });
-          } else { fallbackCopy(t); done(); }
-        }
-        function fallbackCopy(t) {
           const ta = document.createElement("textarea");
-          ta.value = t;
+          ta.value = paneTexts[i];
           document.body.appendChild(ta);
           ta.select();
           document.execCommand("copy");
           ta.remove();
+          const old = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(() => { btn.textContent = old; }, 1200);
         }
         </script>
         """
@@ -113,9 +108,5 @@ enum DiffHTMLRenderer {
         let data = (try? JSONEncoder().encode([s])) ?? Data("[\"\"]".utf8)
         let json = String(data: data, encoding: .utf8) ?? "[\"\"]"
         return String(json.dropFirst().dropLast()).replacingOccurrences(of: "</", with: "<\\/")
-    }
-
-    private static func lineCount(_ s: String) -> Int {
-        s.isEmpty ? 0 : s.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
     }
 }
