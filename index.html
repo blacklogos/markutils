@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clip — Your content toolkit, in the menu bar.</title>
   <link rel="canonical" href="https://clip.cc4.marketing">
-  <meta name="description" content="A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media — with zero dependencies.">
+  <meta name="description" content="A macOS menu bar app + CLI for content creators: read and annotate Markdown with AI-ready comment export, diff two texts side by side, style Unicode for social (Vietnamese-aware), manage assets — zero dependencies.">
   <meta property="og:title" content="Clip — Your content toolkit, in the menu bar.">
-  <meta property="og:description" content="A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media.">
+  <meta property="og:description" content="Annotate Markdown for AI agents, diff revisions side by side, style Unicode for social. One menu bar app + CLI, zero dependencies, free.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://clip.cc4.marketing">
   <meta property="og:image" content="https://raw.githubusercontent.com/blacklogos/markutils/main/og-image.png">
@@ -15,7 +15,7 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Clip — Your content toolkit, in the menu bar.">
-  <meta name="twitter:description" content="A macOS menu bar app + CLI that manages assets, transforms Markdown, and formats text for social media.">
+  <meta name="twitter:description" content="Annotate Markdown for AI agents, diff revisions side by side, style Unicode for social. One menu bar app + CLI. Free.">
   <meta name="twitter:image" content="https://raw.githubusercontent.com/blacklogos/markutils/main/og-image.png">
   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/blacklogos/markutils/main/Resources/clip-icon-1024.png">
 
@@ -190,6 +190,56 @@
       background: linear-gradient(90deg, transparent, var(--border), transparent);
     }
   </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Clip",
+    "applicationCategory": "DesktopApplication",
+    "operatingSystem": "macOS",
+    "url": "https://clip.cc4.marketing/",
+    "description": "A macOS menu bar app + CLI for content creators: read and annotate Markdown with AI-ready comment export, diff two texts side by side, style Unicode for social (Vietnamese-aware), manage assets — zero dependencies.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "Tri Vo", "url": "https://github.com/blacklogos" },
+    "softwareVersion": "1.6.0",
+    "featureList": [
+      "Asset vault with folders and deep search",
+      "Markdown reader with live reload and AI-ready comment export",
+      "Side-by-side text diff with smart word/character highlighting",
+      "Markdown, HTML, CSV, TSV transforms",
+      "Unicode text styling for social media with Vietnamese accent and natural modes",
+      "Daily notes with floating panel",
+      "Bundled clip CLI: style, unstyle, table, comments, md2social, export, import"
+    ],
+    "codeRepository": "https://github.com/blacklogos/markutils"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Is Clip free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Clip is free and open source under the MIT license. No accounts, no telemetry, no ads. The full source code is on GitHub at github.com/blacklogos/markutils." } },
+      { "@type": "Question", "name": "Why does macOS block the app?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Clip is not signed with an Apple Developer certificate, so macOS Gatekeeper quarantines it by default. Running xattr -rd com.apple.quarantine /Applications/Clip.app removes the flag safely. Clip makes no network calls except the optional update checker to GitHub." } },
+      { "@type": "Question", "name": "Where is my data stored?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Clip stores everything locally in ~/Library/Application Support/Clip/ as plain JSON files. No cloud, no sync, no external services. The clip export command creates portable backups." } },
+      { "@type": "Question", "name": "Can I sync across multiple Macs?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Clip has no built-in sync, but the export and import commands work with any shared folder. A cron job can auto-export the vault to Dropbox or iCloud Drive on a schedule." } },
+      { "@type": "Question", "name": "What are Clip's dependencies?",
+        "acceptedAnswer": { "@type": "Answer", "text": "One: Sparkle for auto-updates, bundled inside the app. Everything else is pure Swift, AppKit, SwiftUI, and WebKit. No Homebrew, no Node, no CocoaPods." } },
+      { "@type": "Question", "name": "How do I access Clip quickly?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Three ways: click the paperclip icon in the menu bar, press Command+Shift+C from any app, or shake the mouse vigorously to pop up the floating panel." } },
+      { "@type": "Question", "name": "How do I send my document feedback to an AI agent?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Open a Markdown file in Clip's Reader tab, select text, and attach a note. Copying the section or whole file outputs the source unchanged with each note inlined as an instruction callout, ready to paste into Claude, ChatGPT, or any AI agent. Notes live in a sidecar file, so the original document is never modified. The clip comments export command does the same from the terminal." } },
+      { "@type": "Question", "name": "How does the Diff tab decide what to highlight?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Clip's Smart mode picks per line pair: character-level marks for typo-size edits, word-level marks when lines share enough words, and whole-line tinting for rewrites. Line, Word, and Char precision can be forced from a picker. Both panes show line numbers, change counts, and one-click copy." } },
+      { "@type": "Question", "name": "Does Unicode styling work with Vietnamese text?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Clip's accent mode styles every letter and re-attaches Vietnamese tone marks over the styled glyphs, so words render fully bold instead of half-styled. Natural mode keeps words with tone marks plain and styles only ASCII tokens, the safest rendering across platforms. Reverting restores the exact original text." } }
+    ]
+  }
+  </script>
 </head>
 
 <body class="min-h-screen antialiased">
@@ -287,7 +337,7 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
     <div class="max-w-5xl mx-auto">
       <div class="text-center mb-16">
         <h2 class="font-display text-3xl sm:text-4xl font-700 mb-4">Everything you need, one panel away</h2>
-        <p class="text-base" style="color: var(--muted);">Five tabs. No Dock icon. Always one click away from your menu bar.</p>
+        <p class="text-base" style="color: var(--muted);">Six tabs. No Dock icon. Always one click away from your menu bar.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -310,6 +360,16 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
           <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x270F;&#xFE0F;</div>
           <h3 class="font-display text-lg font-700 mb-2">Daily Notes</h3>
           <p class="text-sm leading-relaxed" style="color: var(--muted);">Built-in markdown editor with keyword expansion, inline styling, and preview. Float alongside any app with ⌥A.</p>
+        </div>
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x1F4D6;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Markdown Reader</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Open .md files and folders with live reload. Highlight text, attach review notes, and export the file with your instructions inlined &mdash; ready to paste into any AI agent.</p>
+        </div>
+        <div class="feature-card rounded-2xl p-7 border" style="background: var(--surface); border-color: var(--border);">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5" style="background: var(--surface-2);">&#x00B1;</div>
+          <h3 class="font-display text-lg font-700 mb-2">Diff Checker</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--muted);">Side-by-side compare with line numbers and smart word/character highlighting. Review exactly what an AI changed in your draft before accepting it.</p>
         </div>
       </div>
     </div>
@@ -654,6 +714,36 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
           </summary>
           <div class="faq-body px-5 pb-5 text-sm leading-relaxed" style="color: var(--muted);">
             Three ways: <strong>1)</strong> Click the paperclip icon in your menu bar. <strong>2)</strong> Press <kbd class="font-mono text-xs px-1 py-0.5 rounded border" style="background: var(--surface-2); border-color: var(--border);">&#x2318;+Shift+C</kbd> from any app. <strong>3)</strong> Shake your mouse vigorously &mdash; the panel pops up instantly.
+          </div>
+        </details>
+
+        <details class="rounded-xl border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+          <summary class="flex items-center justify-between p-5 font-body font-600 text-base cursor-pointer">
+            How do I send my document feedback to an AI agent?
+            <svg class="faq-chevron w-5 h-5 flex-shrink-0" style="color: var(--muted);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="faq-body px-5 pb-5 text-sm leading-relaxed" style="color: var(--muted);">
+            Open a Markdown file in Clip's Reader tab, select any text, and attach a note ("make this shorter", "add a source here"). Copy the section or whole file: Clip outputs the source unchanged with each note inlined as an instruction callout, ready to paste into Claude, ChatGPT, or any agent. The agent's revision can then be checked in the Diff tab. Notes are stored in a sidecar file; your original .md is never modified. Also available headless: <code class="font-mono text-xs px-1 py-0.5 rounded" style="background: var(--surface-2);">clip comments export file.md</code>.
+          </div>
+        </details>
+
+        <details class="rounded-xl border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+          <summary class="flex items-center justify-between p-5 font-body font-600 text-base cursor-pointer">
+            How does the Diff tab decide what to highlight?
+            <svg class="faq-chevron w-5 h-5 flex-shrink-0" style="color: var(--muted);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="faq-body px-5 pb-5 text-sm leading-relaxed" style="color: var(--muted);">
+            The default Smart mode picks per line pair: character-level marks for typo-size edits, word-level marks when lines share enough words, and whole-line tinting when a line was rewritten. You can force Line, Word, or Char precision from the picker. Both panes get line numbers, change counts, and one-click copy.
+          </div>
+        </details>
+
+        <details class="rounded-xl border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+          <summary class="flex items-center justify-between p-5 font-body font-600 text-base cursor-pointer">
+            Does Unicode styling work with Vietnamese text?
+            <svg class="faq-chevron w-5 h-5 flex-shrink-0" style="color: var(--muted);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="faq-body px-5 pb-5 text-sm leading-relaxed" style="color: var(--muted);">
+            Yes, two ways. Accent mode (default) styles every letter and re-attaches tone marks over the styled glyphs, so &ldquo;mắt&rdquo; becomes fully bold instead of half-styled. Natural mode (the VN toggle) keeps words with tone marks plain and styles only ASCII tokens like AI, 247, or #hashtags &mdash; the safest rendering across platforms and fonts. Reverting always restores the exact original text.
           </div>
         </details>
 
