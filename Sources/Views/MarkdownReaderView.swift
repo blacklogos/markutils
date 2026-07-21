@@ -38,6 +38,13 @@ struct MarkdownReaderView: View {
             .keyboardShortcut("o", modifiers: .command).hidden())
         .background(Button("") { Self.presentOpenDialog(directories: true) }
             .keyboardShortcut("o", modifiers: [.command, .shift]).hidden())
+        // Switching files mid-capture would otherwise save the pending quote
+        // against the newly opened file's CommentStore instead of the one it
+        // was selected from — drop it instead.
+        .onChange(of: store.currentFileURL) { _, _ in
+            pendingSelection = nil
+            captureNote = ""
+        }
     }
 
     // MARK: - Empty state
@@ -164,30 +171,49 @@ struct MarkdownReaderView: View {
     @ViewBuilder
     private var previewArea: some View {
         if store.currentFileURL != nil {
-            AnnotatableHTMLPreviewView(
-                html: store.renderedHTML,
-                comments: commentStore.comments,
-                flashAnchorID: flashAnchorID,
-                onSelect: { quote, prefix, suffix in
-                    captureNote = ""
-                    pendingSelection = PendingSelection(quote: quote, prefix: prefix, suffix: suffix)
-                },
-                onCommentClicked: { selectedCommentID = $0 }
-            )
-            .popover(item: $pendingSelection, arrowEdge: .top) { selection in
-                CommentCapturePopover(
-                    quote: selection.quote,
-                    note: $captureNote,
-                    onSave: {
-                        commentStore.addComment(quote: selection.quote,
-                                                prefix: selection.prefix,
-                                                suffix: selection.suffix,
-                                                note: captureNote)
-                        pendingSelection = nil
+            ZStack(alignment: .bottomTrailing) {
+                AnnotatableHTMLPreviewView(
+                    html: store.renderedHTML,
+                    comments: commentStore.comments,
+                    flashAnchorID: flashAnchorID,
+                    onSelect: { quote, prefix, suffix in
+                        captureNote = ""
+                        pendingSelection = PendingSelection(quote: quote, prefix: prefix, suffix: suffix)
                     },
-                    onCancel: { pendingSelection = nil }
+                    onCommentClicked: { selectedCommentID = $0 }
                 )
+
+                // A plain in-window overlay, not an NSPopover: FloatingPanel is a
+                // non-activating panel whose close button just orders it out rather
+                // than closing it, and NSPopover's dismissal (click-outside monitor,
+                // key-window handoff) doesn't track reliably against that window
+                // style. That let Cancel leave the popover's AppKit window alive, a
+                // later selection would stack a second one on top still wired to
+                // the old onSave, and hiding the panel never told the detached
+                // popover to close — hence stuck cards and duplicate comments. An
+                // overlay lives in the same view tree as the rest of the pane, so
+                // Cancel is a plain state write and hiding the panel takes it down too.
+                if let selection = pendingSelection {
+                    CommentCapturePopover(
+                        quote: selection.quote,
+                        note: $captureNote,
+                        onSave: {
+                            commentStore.addComment(quote: selection.quote,
+                                                    prefix: selection.prefix,
+                                                    suffix: selection.suffix,
+                                                    note: captureNote)
+                            pendingSelection = nil
+                        },
+                        onCancel: { pendingSelection = nil }
+                    )
+                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.editorBackground))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(AppColors.divider))
+                    .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
+                    .padding(16)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .bottomTrailing)))
+                }
             }
+            .animation(.easeOut(duration: 0.14), value: pendingSelection?.id)
         } else {
             Text(store.isScanning ? "Scanning folder…" : "Select a file from the sidebar")
                 .font(.system(size: 12))
