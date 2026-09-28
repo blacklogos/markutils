@@ -191,28 +191,47 @@
     }
   </style>
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Clip",
-    "applicationCategory": "DesktopApplication",
-    "operatingSystem": "macOS",
-    "url": "https://clip.cc4.marketing/",
-    "description": "A macOS menu bar app + CLI for content creators: read and annotate Markdown with AI-ready comment export, diff two texts side by side, style Unicode for social (Vietnamese-aware), manage assets — zero dependencies.",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-    "author": { "@type": "Person", "name": "Tri Vo", "url": "https://github.com/blacklogos" },
-    "softwareVersion": "1.6.0",
-    "featureList": [
-      "Asset vault with folders and deep search",
-      "Markdown reader with live reload and AI-ready comment export",
-      "Side-by-side text diff with smart word/character highlighting",
-      "Markdown, HTML, CSV, TSV transforms",
-      "Unicode text styling for social media with Vietnamese accent and natural modes",
-      "Daily notes with floating panel",
-      "Bundled clip CLI: style, unstyle, table, comments, md2social, export, import"
-    ],
-    "codeRepository": "https://github.com/blacklogos/markutils"
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Clip",
+  "applicationCategory": "DesktopApplication",
+  "operatingSystem": "macOS",
+  "url": "https://clip.cc4.marketing/",
+  "description": "A macOS menu bar app + CLI for content creators: read and annotate Markdown with AI-ready comment export, diff two texts side by side, style Unicode for social (Vietnamese-aware), manage assets — zero dependencies.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Tri Vo",
+    "url": "https://github.com/blacklogos"
+  },
+  "softwareVersion": "1.6.0",
+  "featureList": [
+    "Asset vault with folders and deep search",
+    "Markdown reader with live reload and AI-ready comment export",
+    "Side-by-side text diff with smart word/character highlighting",
+    "Markdown, HTML, CSV, TSV transforms",
+    "Unicode text styling for social media with Vietnamese accent and natural modes",
+    "Daily notes with floating panel",
+    "Bundled clip CLI: style, unstyle, table, comments, md2social, export, import"
+  ],
+  "codeRepository": "https://github.com/blacklogos/markutils",
+  "publisher": {
+    "@type": "Organization",
+    "name": "CC4.Marketing",
+    "url": "https://cc4.marketing/",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://cc4.marketing/apple-touch-icon.png",
+      "width": 180,
+      "height": 180
+    }
   }
+}
   </script>
   <script type="application/ld+json">
   {
@@ -240,6 +259,24 @@
     ]
   }
   </script>
+<!-- cc4-analytics:start -->
+<script>
+  // Same stack as cc4.marketing. Only the production host reports; previews stay out.
+  if (location.hostname === 'clip.cc4.marketing') {
+    var cc4s = function (src, attrs) {
+      var s = document.createElement('script'); s.src = src; s.defer = true;
+      for (var k in attrs) s.setAttribute(k, attrs[k]);
+      document.head.appendChild(s);
+    };
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { dataLayer.push(arguments); };
+    gtag('js', new Date()); gtag('config', 'G-RERRE2NHVP');
+    cc4s('https://www.googletagmanager.com/gtag/js?id=G-RERRE2NHVP', {});
+    cc4s('https://bialytics.biplus.com.vn/js/script.js', { 'data-domain': 'cc4.marketing' });
+    cc4s('https://s.cc4.marketing/beacon.js', { 'data-site': 'clip.cc4.marketing' });
+  }
+</script>
+<!-- cc4-analytics:end -->
 </head>
 
 <body class="min-h-screen antialiased">
@@ -790,5 +827,10 @@ Exported 42 assets to ~/Dropbox/clip-backup.json</code></pre>
     });
   </script>
 
+<!-- cc4-hub-link:start -->
+<p style="text-align:center;font-size:13px;opacity:.75;margin:16px 0">
+  A free tool from <a href="https://cc4.marketing/?utm_source=clip&amp;utm_medium=footer&amp;utm_campaign=hub-link">cc4.marketing</a>, the free Claude Code course for marketers.
+</p>
+<!-- cc4-hub-link:end -->
 </body>
 </html>

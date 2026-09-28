@@ -1,0 +1,53 @@
+# Clip
+
+> A macOS menu bar app + CLI for content creators: read and annotate Markdown with AI-ready comment export, diff two texts side by side, style Unicode for social (Vietnamese-aware), manage assets — zero dependencies.
+
+Clip is a free tool published by CC4.Marketing (https://cc4.marketing/), the free Claude Code course for marketers.
+
+## Pages
+
+- [Clip](https://clip.cc4.marketing/)
+
+## FAQ
+
+### Is Clip free?
+
+Yes. Clip is free and open source under the MIT license. No accounts, no telemetry, no ads. The full source code is on GitHub at github.com/blacklogos/markutils.
+
+### Why does macOS block the app?
+
+Clip is not signed with an Apple Developer certificate, so macOS Gatekeeper quarantines it by default. Running xattr -rd com.apple.quarantine /Applications/Clip.app removes the flag safely. Clip makes no network calls except the optional update checker to GitHub.
+
+### Where is my data stored?
+
+Clip stores everything locally in ~/Library/Application Support/Clip/ as plain JSON files. No cloud, no sync, no external services. The clip export command creates portable backups.
+
+### Can I sync across multiple Macs?
+
+Clip has no built-in sync, but the export and import commands work with any shared folder. A cron job can auto-export the vault to Dropbox or iCloud Drive on a schedule.
+
+### What are Clip's dependencies?
+
+One: Sparkle for auto-updates, bundled inside the app. Everything else is pure Swift, AppKit, SwiftUI, and WebKit. No Homebrew, no Node, no CocoaPods.
+
+### How do I access Clip quickly?
+
+Three ways: click the paperclip icon in the menu bar, press Command+Shift+C from any app, or shake the mouse vigorously to pop up the floating panel.
+
+### How do I send my document feedback to an AI agent?
+
+Open a Markdown file in Clip's Reader tab, select text, and attach a note. Copying the section or whole file outputs the source unchanged with each note inlined as an instruction callout, ready to paste into Claude, ChatGPT, or any AI agent. Notes live in a sidecar file, so the original document is never modified. The clip comments export command does the same from the terminal.
+
+### How does the Diff tab decide what to highlight?
+
+Clip's Smart mode picks per line pair: character-level marks for typo-size edits, word-level marks when lines share enough words, and whole-line tinting for rewrites. Line, Word, and Char precision can be forced from a picker. Both panes show line numbers, change counts, and one-click copy.
+
+### Does Unicode styling work with Vietnamese text?
+
+Yes. Clip's accent mode styles every letter and re-attaches Vietnamese tone marks over the styled glyphs, so words render fully bold instead of half-styled. Natural mode keeps words with tone marks plain and styles only ASCII tokens, the safest rendering across platforms. Reverting restores the exact original text.
+
+
+## Related
+
+- [CC4.Marketing, free Claude Code course for marketers](https://cc4.marketing/)
+- [All cc4.marketing tools](https://cc4.marketing/llms.txt)

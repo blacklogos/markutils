@@ -1,0 +1,6 @@
+# clip.cc4.marketing: all search engines and AI assistants welcome
+User-agent: *
+Allow: /
+
+Sitemap: https://clip.cc4.marketing/sitemap.xml
+# LLM summary: https://clip.cc4.marketing/llms.txt

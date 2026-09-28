@@ -41,3 +41,14 @@ There is no linter or formatter configured. No third-party dependencies.
 - **Accessory app** — `NSApp.setActivationPolicy(.accessory)` means no Dock icon. The status item menu only appears on right-click; left-click toggles the panel.
 - **Asset persistence** is eager — `AssetStore.assets.didSet` triggers save on every mutation.
 - Regression testing is mandatory per `AGENT_RULES.md`. Run `./scripts/verify_release.sh` before completing work.
+
+## Landing page (clip.cc4.marketing)
+
+Pages project `clip-app`, direct upload. Deploy `index.html` together with `site-seo/`
+(404, robots, sitemap, llms.txt) or the SEO files disappear from production:
+
+    rm -rf /tmp/deploy && mkdir /tmp/deploy && cp index.html site-seo/* /tmp/deploy/
+    npx wrangler pages deploy /tmp/deploy --project-name=clip-app --branch=main --commit-dirty=true
+
+After editing `index.html` (title, description, FAQ JSON-LD), regenerate `site-seo/` with
+`~/Projects/tasks/cc4-seo-subdomains/working/apply-seo-analytics-kit.py clip.cc4.marketing <dir>`.
