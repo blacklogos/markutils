@@ -51,4 +51,4 @@ Pages project `clip-app`, direct upload. Deploy `index.html` together with `site
     npx wrangler pages deploy /tmp/deploy --project-name=clip-app --branch=main --commit-dirty=true
 
 After editing `index.html` (title, description, FAQ JSON-LD), regenerate `site-seo/` with
-`~/Projects/tasks/cc4-seo-subdomains/working/apply-seo-analytics-kit.py clip.cc4.marketing <dir>`.
+`python3 ~/Projects/tasks/cc4-seo-subdomains/working/apply-seo-analytics-kit.py clip.cc4.marketing . --seo-dir site-seo --only-index`.
