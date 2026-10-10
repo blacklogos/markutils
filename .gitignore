@@ -10,3 +10,4 @@ dmg_staging/
 .agent/
 *.pem
 .wrangler/
+out/
