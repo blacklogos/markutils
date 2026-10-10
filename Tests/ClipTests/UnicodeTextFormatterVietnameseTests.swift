@@ -18,7 +18,9 @@ final class UnicodeTextFormatterVietnameseTests: XCTestCase {
         XCTAssertFalse(out.contains("C"))
         XCTAssertFalse(out.contains("h"))
         XCTAssertFalse(out.contains("o"))
-        XCTAssertTrue(out.contains("\u{0300}"))  // grave tone mark retained
+        // grave tone mark retained; check scalars, since String.contains compares whole grapheme
+        // clusters and a lone combining mark never matches inside "𝐚̀"
+        XCTAssertTrue(out.unicodeScalars.contains("\u{0300}"))
     }
 
     func testAccentModeStrokedD() {
