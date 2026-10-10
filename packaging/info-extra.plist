@@ -57,7 +57,7 @@
         </dict>
     </array>
     <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/blacklogos/markutils/main/appcast.xml</string>
+    <string>https://updates.itsbearly.com/clip/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>Ak/mWZjGuhHoJegvZho1C9YtFv+1WFzbQOHtOcQiz2U=</string>
     <key>SUEnableAutomaticChecks</key>
